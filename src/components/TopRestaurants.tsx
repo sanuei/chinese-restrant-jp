@@ -2,8 +2,16 @@ import { getDb } from "@/lib/cloudflare";
 import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { Star, MapPin } from "lucide-react";
-
-export const runtime = "edge";
+import {
+  getRating,
+  getRestaurantName,
+  getRestaurantSummary,
+  normalizeAuthenticity,
+  normalizeCuisineType,
+  normalizePriceLevel,
+  parsePhotoReferences,
+  type RestaurantRow,
+} from "@/lib/restaurant-types";
 
 export default async function TopRestaurants({ locale }: { locale: string }) {
   const t = await getTranslations({ locale, namespace: "home" });
@@ -12,15 +20,15 @@ export default async function TopRestaurants({ locale }: { locale: string }) {
   const tr = await getTranslations({ locale, namespace: "restaurant" });
 
   const db = await getDb();
-  let restaurants = [];
+  let restaurants: RestaurantRow[] = [];
   
   try {
-    const { results } = await db.prepare(
+    const { results = [] } = await db.prepare(
       `SELECT * FROM restaurants WHERE is_active = 1 ORDER BY trusted_rating DESC, raw_review_count DESC LIMIT 6`
-    ).all();
+    ).all<RestaurantRow>();
     restaurants = results || [];
-  } catch (e) {
-    console.error("Database query error:", e);
+  } catch (error) {
+    console.error("Database query error:", error);
   }
 
   // 开发环境如果没有数据，提供一个占位提示
@@ -47,19 +55,18 @@ export default async function TopRestaurants({ locale }: { locale: string }) {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {restaurants.map((restaurant: any) => {
-          const name = locale === "zh" ? (restaurant.name_zh || restaurant.name_original) : (restaurant.name_ja || restaurant.name_original);
-          const summary = locale === "zh" ? restaurant.ai_summary_zh : restaurant.ai_summary_ja;
+        {restaurants.map((restaurant) => {
+          const name = getRestaurantName(restaurant, locale);
+          const summary = getRestaurantSummary(restaurant, locale);
+          const authenticity = normalizeAuthenticity(restaurant.authenticity);
+          const cuisineType = normalizeCuisineType(restaurant.cuisine_type);
+          const priceLevel = normalizePriceLevel(restaurant.price_level);
           
           let photoUrl = "https://images.unsplash.com/photo-1563245372-f21724e3856d?q=80&w=600&auto=format&fit=crop";
-          try {
-            if (restaurant.photos) {
-              const photos = JSON.parse(restaurant.photos);
-              if (photos.length > 0) {
-                photoUrl = `https://maps.googleapis.com/maps/api/place/photo?maxwidth=600&photo_reference=${photos[0]}&key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}`;
-              }
-            }
-          } catch (e) {}
+          const photos = parsePhotoReferences(restaurant.photos);
+          if (photos.length > 0) {
+            photoUrl = `https://maps.googleapis.com/maps/api/place/photo?maxwidth=600&photo_reference=${photos[0]}&key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}`;
+          }
 
           return (
             <Link key={restaurant.id} href={`/${locale}/restaurants/${restaurant.id}`} className="restaurant-card group block">
@@ -71,9 +78,9 @@ export default async function TopRestaurants({ locale }: { locale: string }) {
                   className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                 />
                 <div className="absolute top-3 right-3 flex gap-2">
-                  <span className={`badge-${restaurant.authenticity}`}>
-                    {restaurant.authenticity === "authentic" ? "🔴 " : restaurant.authenticity === "adapted" ? "🟡 " : "🔵 "}
-                    {ta(restaurant.authenticity as any)}
+                  <span className={`badge-${authenticity}`}>
+                    {authenticity === "authentic" ? "🔴 " : authenticity === "adapted" ? "🟡 " : "🔵 "}
+                    {ta(authenticity)}
                   </span>
                 </div>
               </div>
@@ -85,14 +92,14 @@ export default async function TopRestaurants({ locale }: { locale: string }) {
                   </h3>
                   <div className="flex items-center gap-1 bg-warm-50 px-2 py-1 rounded-md text-ink-900">
                     <Star size={14} className="fill-gold-500 text-gold-500" />
-                    <span className="font-bold text-sm">{(restaurant.trusted_rating || restaurant.raw_rating).toFixed(1)}</span>
+                    <span className="font-bold text-sm">{getRating(restaurant).toFixed(1)}</span>
                   </div>
                 </div>
 
                 <div className="flex items-center gap-3 text-xs mb-4 text-ink-400">
                   <span className="flex items-center gap-1"><MapPin size={12} /> {restaurant.ward || restaurant.city}</span>
-                  <span className={`cuisine-tag cuisine-${restaurant.cuisine_type}`}>{tc(restaurant.cuisine_type as any)}</span>
-                  {restaurant.price_level && <span>{tr(`price_level.${restaurant.price_level}` as any)}</span>}
+                  <span className={`cuisine-tag cuisine-${cuisineType}`}>{tc(cuisineType)}</span>
+                  {priceLevel && <span>{tr(`price_level.${priceLevel}`)}</span>}
                 </div>
 
                 {summary && (

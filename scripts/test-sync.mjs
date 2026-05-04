@@ -1,6 +1,7 @@
-import fs from 'fs';
 import dotenv from 'dotenv';
 dotenv.config({ path: '.env.local' });
+
+const syncApiBase = process.env.SYNC_API_BASE || 'http://localhost:3000';
 
 async function run() {
   console.log("Searching for place ID...");
@@ -18,7 +19,7 @@ async function run() {
   console.log("Found Place ID:", placeId);
   
   console.log("Calling local sync API...");
-  const syncRes = await fetch('http://localhost:3000/api/admin/sync', {
+  const syncRes = await fetch(`${syncApiBase}/api/admin/sync`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -27,8 +28,8 @@ async function run() {
     body: JSON.stringify({ place_id: placeId })
   });
   
-  const syncData = await syncRes.json();
-  console.log("Sync Result:", syncData);
+  const syncText = await syncRes.text();
+  console.log("Sync Response:", syncRes.status, syncText);
 }
 
 run();

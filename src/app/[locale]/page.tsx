@@ -1,11 +1,10 @@
-import { useTranslations } from "next-intl";
 import { getTranslations } from "next-intl/server";
 import type { Metadata } from "next";
-import Navbar from "@/components/Navbar";
 import HeroSection from "@/components/HeroSection";
 import CuisineGrid from "@/components/CuisineGrid";
 import TopRestaurants from "@/components/TopRestaurants";
-import Footer from "@/components/Footer";
+
+export const dynamic = "force-dynamic";
 
 type Props = { params: Promise<{ locale: string }> };
 
@@ -22,15 +21,13 @@ export default async function HomePage({ params }: Props) {
   const { locale } = await params;
 
   return (
-    <main>
-      <Navbar locale={locale} />
+    <>
       <HeroSection locale={locale} />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <CuisineGrid locale={locale} />
         <div className="divider-chinese" />
         <TopRestaurants locale={locale} />
       </div>
-      <Footer locale={locale} />
-    </main>
+    </>
   );
 }

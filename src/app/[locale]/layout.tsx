@@ -4,6 +4,8 @@ import { NextIntlClientProvider } from "next-intl";
 import { getMessages } from "next-intl/server";
 import { notFound } from "next/navigation";
 import { routing } from "@/i18n/routing";
+import Navbar from "@/components/Navbar";
+import Footer from "@/components/Footer";
 import "../globals.css";
 
 const notoSerifSC = Noto_Serif_SC({
@@ -51,10 +53,12 @@ export default async function LocaleLayout({ children, params }: Props) {
   const messages = await getMessages();
 
   return (
-    <html lang={locale} className={`${notoSerifSC.variable} ${notoSansSC.variable}`}>
-      <body className="font-sans bg-warm-50 text-stone-800 antialiased">
+    <html lang={locale} className={`${notoSerifSC.variable} ${notoSansSC.variable}`} suppressHydrationWarning>
+      <body className="font-sans bg-warm-50 text-stone-800 antialiased" suppressHydrationWarning>
         <NextIntlClientProvider messages={messages}>
-          {children}
+          <Navbar locale={locale} />
+          <main className="min-h-screen">{children}</main>
+          <Footer locale={locale} />
         </NextIntlClientProvider>
       </body>
     </html>

@@ -1,9 +1,20 @@
 import { getDb } from "@/lib/cloudflare";
 import { getTranslations } from "next-intl/server";
 import { notFound } from "next/navigation";
-import { Star, MapPin, Phone, Globe, Clock, ShieldCheck, ShieldAlert } from "lucide-react";
+import Link from "next/link";
+import { Star, MapPin, Phone, Globe, ShieldCheck, ShieldAlert, MapPinned } from "lucide-react";
+import {
+  getRating,
+  getRestaurantName,
+  getRestaurantSummary,
+  normalizeAuthenticity,
+  normalizeCuisineType,
+  parsePhotoReferences,
+  type RestaurantRow,
+  type ReviewRow,
+} from "@/lib/restaurant-types";
 
-export const runtime = "edge";
+export const dynamic = "force-dynamic";
 
 export default async function RestaurantDetailPage({
   params,
@@ -17,42 +28,38 @@ export default async function RestaurantDetailPage({
 
   const db = await getDb();
   
-  let restaurant: any = null;
-  let reviews: any[] = [];
+  let restaurant: RestaurantRow | null = null;
+  let reviews: ReviewRow[] = [];
   
   try {
-    const { results: rResults } = await db.prepare(`SELECT * FROM restaurants WHERE id = ?`).bind(id).all();
+    const { results: rResults = [] } = await db.prepare(`SELECT * FROM restaurants WHERE id = ?`).bind(id).all<RestaurantRow>();
     if (rResults && rResults.length > 0) {
       restaurant = rResults[0];
     }
     
     if (restaurant) {
-      const { results: revResults } = await db.prepare(
+      const { results: revResults = [] } = await db.prepare(
         `SELECT * FROM reviews WHERE restaurant_id = ? AND credibility_action != 'remove' ORDER BY credibility_score DESC LIMIT 20`
-      ).bind(id).all();
+      ).bind(id).all<ReviewRow>();
       reviews = revResults || [];
     }
-  } catch (e) {
-    console.error("Database error:", e);
+  } catch (error) {
+    console.error("Database error:", error);
   }
 
   if (!restaurant) {
     notFound();
   }
 
-  const name = locale === "zh" ? (restaurant.name_zh || restaurant.name_original) : (restaurant.name_ja || restaurant.name_original);
-  const summary = locale === "zh" ? restaurant.ai_summary_zh : restaurant.ai_summary_ja;
+  const name = getRestaurantName(restaurant, locale);
+  const summary = getRestaurantSummary(restaurant, locale);
   const authenticityReason = locale === "zh" ? restaurant.authenticity_reason_zh : restaurant.authenticity_reason_ja;
+  const authenticity = normalizeAuthenticity(restaurant.authenticity);
+  const cuisineType = normalizeCuisineType(restaurant.cuisine_type);
   
-  let photos: string[] = [];
-  try {
-    if (restaurant.photos) {
-      const photoRefs = JSON.parse(restaurant.photos);
-      photos = photoRefs.slice(0, 5).map((ref: string) => 
-        `https://maps.googleapis.com/maps/api/place/photo?maxwidth=800&photo_reference=${ref}&key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}`
-      );
-    }
-  } catch (e) {}
+  const photos = parsePhotoReferences(restaurant.photos).slice(0, 5).map((ref) =>
+    `https://maps.googleapis.com/maps/api/place/photo?maxwidth=800&photo_reference=${ref}&key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}`
+  );
 
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
@@ -87,12 +94,12 @@ export default async function RestaurantDetailPage({
         <div className="flex-1">
           <div className="mb-6">
             <div className="flex items-center gap-3 mb-3">
-              <span className={`badge-${restaurant.authenticity}`}>
-                {restaurant.authenticity === "authentic" ? "🔴 " : restaurant.authenticity === "adapted" ? "🟡 " : "🔵 "}
-                {ta(restaurant.authenticity as any)}
+              <span className={`badge-${authenticity}`}>
+                {authenticity === "authentic" ? "🔴 " : authenticity === "adapted" ? "🟡 " : "🔵 "}
+                {ta(authenticity)}
               </span>
-              <span className={`cuisine-tag cuisine-${restaurant.cuisine_type}`}>
-                {tc(restaurant.cuisine_type as any)}
+              <span className={`cuisine-tag cuisine-${cuisineType}`}>
+                {tc(cuisineType)}
               </span>
             </div>
             <h1 className="font-serif font-black text-4xl leading-tight mb-4 text-ink-900">
@@ -102,7 +109,7 @@ export default async function RestaurantDetailPage({
             <div className="flex flex-wrap items-center gap-6 text-sm text-ink-700">
               <div className="flex items-center gap-1.5">
                 <Star size={18} className="fill-gold-500 text-gold-500" />
-                <span className="font-bold text-lg">{(restaurant.trusted_rating || restaurant.raw_rating).toFixed(1)}</span>
+                <span className="font-bold text-lg">{getRating(restaurant).toFixed(1)}</span>
                 <span className="text-ink-400 ml-1">
                   ({restaurant.trusted_review_count || 0} {t("trusted_reviews")})
                 </span>
@@ -135,14 +142,14 @@ export default async function RestaurantDetailPage({
           <section>
             <h2 className="font-serif font-bold text-2xl mb-6 text-ink-900">大家都在说</h2>
             <div className="flex flex-col gap-6">
-              {reviews.length > 0 ? reviews.map(review => (
+              {reviews.length > 0 ? reviews.map((review) => (
                 <div key={review.id} className="p-5 border border-warm-200 bg-white rounded-xl shadow-sm">
                   <div className="flex items-center gap-3 mb-3">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     {review.author_photo_url && <img src={review.author_photo_url} alt="" className="w-10 h-10 rounded-full bg-warm-100" />}
                     <div>
                       <div className="font-bold text-sm text-ink-900">{review.author_name}</div>
-                      <div className="text-xs text-ink-400">{new Date(review.published_at).toLocaleDateString()}</div>
+                      <div className="text-xs text-ink-400">{review.published_at ? new Date(review.published_at).toLocaleDateString() : ""}</div>
                     </div>
                     <div className="ml-auto flex items-center gap-2">
                       <div className="flex text-gold-500">
@@ -162,7 +169,7 @@ export default async function RestaurantDetailPage({
                       )}
                     </div>
                   </div>
-                  <p className="text-sm leading-relaxed text-ink-700">{review.text}</p>
+                  <p className="text-sm leading-relaxed text-ink-700">{review.text || ""}</p>
                 </div>
               )) : (
                 <div className="text-center py-10 text-ink-400">暂无评论</div>
@@ -175,6 +182,13 @@ export default async function RestaurantDetailPage({
         <div className="w-full md:w-80 shrink-0">
           <div className="sticky top-24 p-6 bg-white border border-warm-200 rounded-xl shadow-sm">
             <h3 className="font-bold text-lg mb-4 text-ink-900">餐厅信息</h3>
+            <Link
+              href={`/${locale}/map?restaurant=${restaurant.id}`}
+              className="mb-5 inline-flex w-full items-center justify-center gap-2 rounded-md bg-vermilion-700 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-vermilion-900"
+            >
+              <MapPinned size={16} />
+              {locale === "zh" ? "在地图中查看" : "地図で見る"}
+            </Link>
             
             <ul className="flex flex-col gap-4 text-sm text-ink-700">
               <li className="flex gap-3">

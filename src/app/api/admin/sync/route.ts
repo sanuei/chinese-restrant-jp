@@ -7,7 +7,27 @@ import {
   generateBilingualSummary 
 } from "@/lib/minimax";
 
-export const runtime = "edge";
+interface SyncRequestBody {
+  place_id?: string;
+}
+
+interface ReviewData {
+  id: string;
+  restaurant_id: string;
+  author_name: string;
+  author_photo_url: string;
+  rating: number;
+  text: string;
+  published_at: string;
+  credibility_score: number;
+  credibility_action: string;
+  credibility_reason: string;
+}
+
+function extractTokyoWard(address: string): string | null {
+  const match = address.match(/東京都([^、\s]+区)/);
+  return match?.[1] || null;
+}
 
 export async function POST(req: NextRequest) {
   // 简单的鉴权
@@ -17,7 +37,7 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const { place_id } = await req.json();
+    const { place_id } = (await req.json()) as SyncRequestBody;
     if (!place_id) {
       return NextResponse.json({ error: "place_id is required" }, { status: 400 });
     }
@@ -33,8 +53,8 @@ export async function POST(req: NextRequest) {
     const reviews = place.reviews || [];
     let trustedRatingSum = 0;
     let trustedReviewCount = 0;
-    const reviewData = [];
-    const reviewTexts = [];
+    const reviewData: ReviewData[] = [];
+    const reviewTexts: string[] = [];
 
     // 2. 分析评论可信度
     for (const review of reviews) {
@@ -106,26 +126,46 @@ export async function POST(req: NextRequest) {
       summary = { zh: "暂无摘要", ja: "概要なし" };
     }
 
+    const ward = extractTokyoWard(place.formatted_address);
+
     // 5. 存入 D1 数据库
     // 5.1 存储餐厅
     await db.prepare(`
       INSERT INTO restaurants (
-        id, name_original, address, lat, lng, price_level, 
+        id, name_original, address, city, ward, lat, lng, phone, website, google_maps_url, price_level, 
         cuisine_type, cuisine_confidence, authenticity, authenticity_score,
         authenticity_reason_zh, authenticity_reason_ja,
         raw_rating, trusted_rating, raw_review_count, trusted_review_count,
         ai_summary_zh, ai_summary_ja, photos, last_synced_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+      ) VALUES (?, ?, ?, 'tokyo', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
       ON CONFLICT(id) DO UPDATE SET
+        name_original = excluded.name_original,
+        address = excluded.address,
+        city = excluded.city,
+        ward = excluded.ward,
+        lat = excluded.lat,
+        lng = excluded.lng,
+        phone = excluded.phone,
+        website = excluded.website,
+        google_maps_url = excluded.google_maps_url,
+        price_level = excluded.price_level,
+        cuisine_type = excluded.cuisine_type,
+        cuisine_confidence = excluded.cuisine_confidence,
+        authenticity = excluded.authenticity,
+        authenticity_score = excluded.authenticity_score,
+        authenticity_reason_zh = excluded.authenticity_reason_zh,
+        authenticity_reason_ja = excluded.authenticity_reason_ja,
         raw_rating = excluded.raw_rating,
         trusted_rating = excluded.trusted_rating,
         raw_review_count = excluded.raw_review_count,
         trusted_review_count = excluded.trusted_review_count,
         ai_summary_zh = excluded.ai_summary_zh,
         ai_summary_ja = excluded.ai_summary_ja,
+        photos = excluded.photos,
         last_synced_at = excluded.last_synced_at
     `).bind(
-      place_id, place.name, place.formatted_address, place.geometry.location.lat, place.geometry.location.lng,
+      place_id, place.name, place.formatted_address, ward, place.geometry.location.lat, place.geometry.location.lng,
+      place.formatted_phone_number || null, place.website || null, place.url || null,
       place.price_level || 2,
       cuisineAnalysis.cuisine_type, cuisineAnalysis.cuisine_confidence,
       cuisineAnalysis.authenticity, cuisineAnalysis.authenticity_score,
@@ -164,8 +204,9 @@ export async function POST(req: NextRequest) {
       trusted_rating: finalTrustedRating
     });
 
-  } catch (error: any) {
+  } catch (error) {
     console.error("Sync Error:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    const message = error instanceof Error ? error.message : "Unknown sync error";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

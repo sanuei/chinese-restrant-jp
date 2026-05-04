@@ -30,7 +30,7 @@ export default function CuisineGrid({ locale }: Props) {
         {CUISINES.map(({ key, emoji, count }) => (
           <Link
             key={key}
-            href={`/${locale}/cuisines/${key}`}
+            href={`/${locale}/restaurants?cuisine=${key}`}
             className={`cuisine-tag cuisine-${key} group flex flex-col items-center gap-2 p-4 rounded-xl border text-center transition-all hover:shadow-md hover:-translate-y-0.5 cursor-pointer`}
             style={{ padding: "14px 8px" }}
           >

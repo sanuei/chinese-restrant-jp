@@ -4,8 +4,8 @@
  */
 
 const API_KEY = process.env.MINIMAX_API_KEY;
-const API_BASE = process.env.MINIMAX_API_BASE || "https://api.minimaxi.chat/v1";
-const MODEL = "abab6.5s-chat"; // 性价比高，适合批量处理
+const API_BASE = process.env.MINIMAX_API_BASE || "https://api.minimax.chat/v1";
+const MODEL = "MiniMax-M2.7-highspeed"; // 使用最新支持的模型
 
 interface MiniMaxMessage {
   role: "system" | "user" | "assistant";
@@ -24,8 +24,7 @@ async function callMiniMax(messages: MiniMaxMessage[], temperature: number = 0.1
       messages,
       temperature,
       top_p: 0.95,
-      max_tokens: 1024,
-      response_format: { type: "json_object" } // 强制返回 JSON 格式
+      max_tokens: 4096,
     })
   });
 
@@ -35,7 +34,27 @@ async function callMiniMax(messages: MiniMaxMessage[], temperature: number = 0.1
   }
 
   const data = await response.json();
-  return JSON.parse(data.choices[0].message.content);
+  if (!data.choices || !data.choices[0]) {
+    throw new Error(`MiniMax API unexpected response: ${JSON.stringify(data)}`);
+  }
+  
+  let content = data.choices[0].message.content;
+  // 提取 markdown 中的 JSON 块
+  const jsonMatch = content.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+  if (jsonMatch) {
+    content = jsonMatch[1];
+  } else {
+    // 粗暴清理可能未闭合的代码块
+    content = content.replace(/^```(?:json)?/i, '').replace(/```$/, '').trim();
+    if (!content.endsWith('}')) content += '}';
+  }
+  
+  try {
+    return JSON.parse(content);
+  } catch (e) {
+    console.error("Failed to parse JSON:", content);
+    throw e;
+  }
 }
 
 // 1. 评论可信度分析
