@@ -39,7 +39,12 @@
     "reviews": "条评论",
     "trusted_reviews": "条真实评论",
     "filtered": "已过滤 {count} 条低可信评论",
-    "price_level": ["", "¥ 实惠", "¥¥ 适中", "¥¥¥ 偏贵", "¥¥¥¥ 高端"],
+    "price_level": {
+      "1": "¥ 实惠",
+      "2": "¥¥ 适中",
+      "3": "¥¥¥ 偏贵",
+      "4": "¥¥¥¥ 高端"
+    },
     "ai_summary": "AI 综合摘要",
     "highlights": "大家最满意",
     "concerns": "注意事项",
