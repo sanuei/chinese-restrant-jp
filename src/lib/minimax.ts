@@ -57,24 +57,36 @@ async function callMiniMax(messages: MiniMaxMessage[], temperature: number = 0.1
   }
 }
 
-// 1. 评论可信度分析
-export async function analyzeReviewCredibility(reviewText: string, restaurantName: string) {
-  const systemPrompt = `你是一个专业的餐厅评价打假与分析专家。
-请分析以下关于餐厅「${restaurantName}」的评论文本，判断其真实可信度。
-返回严格的 JSON 格式：
-{
-  "credibility_score": 0-100的整数 (100最可信),
-  "credibility_action": "keep" | "flag" | "remove",
-  "credibility_reason": "简短的一句话理由"
+// 1. 批量评论可信度分析（一次 API 调用分析所有评论）
+export interface ReviewCredibilityResult {
+  credibility_score: number;
+  credibility_action: "keep" | "flag" | "remove";
+  credibility_reason: string;
 }
+
+export async function analyzeReviewsCredibilityBatch(
+  reviews: { text: string; rating: number; author_name: string }[],
+  restaurantName: string
+): Promise<ReviewCredibilityResult[]> {
+  const systemPrompt = `你是一个专业的餐厅评价打假与分析专家。
+请分析以下关于餐厅「${restaurantName}」的多条评论，判断每条的真实可信度。
+返回严格的 JSON 数组格式（一一对应）：
+[
+  {"credibility_score": 0-100整数, "credibility_action": "keep|flag|remove", "credibility_reason": "简短理由"},
+  ...
+]
 判断标准：
 - 过于空泛的溢美之词、情绪化攻击，降低分数。
 - 提到具体菜品细节、有优点也有缺点的客观描述，提高分数。
 - 日文和中文一视同仁。`;
 
+  const userContent = reviews
+    .map((r, i) => `[${i}] ${r.author_name} (★${r.rating}): ${r.text}`)
+    .join('\n');
+
   return callMiniMax([
     { role: "system", content: systemPrompt },
-    { role: "user", content: reviewText }
+    { role: "user", content: userContent }
   ]);
 }
 

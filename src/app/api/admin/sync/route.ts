@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/cloudflare";
 import { getPlaceDetails } from "@/lib/google-maps";
-import { 
-  analyzeReviewCredibility, 
-  analyzeRestaurantCuisine, 
-  generateBilingualSummary 
+import {
+  analyzeReviewsCredibilityBatch,
+  type ReviewCredibilityResult,
+  analyzeRestaurantCuisine,
+  generateBilingualSummary
 } from "@/lib/minimax";
 
 interface SyncRequestBody {
@@ -56,21 +57,27 @@ export async function POST(req: NextRequest) {
     const reviewData: ReviewData[] = [];
     const reviewTexts: string[] = [];
 
-    // 2. 分析评论可信度
-    for (const review of reviews) {
-      if (!review.text) continue;
-      reviewTexts.push(review.text);
+    // 2. 一次性分析所有评论可信度（单次 API 调用）
+    const reviewsWithText = reviews.filter(r => r.text);
+    let credibilityResults: ReviewCredibilityResult[];
 
-      let credibility;
-      try {
-        credibility = await analyzeReviewCredibility(review.text, place.name);
-      } catch (e) {
-        console.error("MiniMax Review Analysis Error:", e);
-        // Fallback
-        credibility = { credibility_score: 50, credibility_action: "keep", credibility_reason: "分析失败默认保留" };
-      }
+    try {
+      credibilityResults = await analyzeReviewsCredibilityBatch(
+        reviewsWithText.map(r => ({ text: r.text, rating: r.rating, author_name: r.author_name })),
+        place.name
+      );
+    } catch (e) {
+      console.error("MiniMax Batch Review Analysis Error:", e);
+      // Fallback: 所有评论默认 keep
+      credibilityResults = reviewsWithText.map(() => ({
+        credibility_score: 50, credibility_action: "keep" as const, credibility_reason: "分析失败默认保留"
+      }));
+    }
 
-      // 计算可信评分加权
+    for (let i = 0; i < reviewsWithText.length; i++) {
+      const review = reviewsWithText[i];
+      const credibility = credibilityResults[i] || { credibility_score: 50, credibility_action: "keep" as const, credibility_reason: "分析失败默认保留" };
+
       let weight = 1.0;
       if (credibility.credibility_action === "flag") weight = 0.3;
       if (credibility.credibility_action === "remove") weight = 0;
@@ -81,7 +88,7 @@ export async function POST(req: NextRequest) {
       }
 
       reviewData.push({
-        id: `${place_id}_${review.time}`, // 临时用作主键
+        id: `${place_id}_${review.time}`,
         restaurant_id: place_id,
         author_name: review.author_name,
         author_photo_url: review.profile_photo_url,
@@ -92,9 +99,17 @@ export async function POST(req: NextRequest) {
         credibility_action: credibility.credibility_action,
         credibility_reason: credibility.credibility_reason,
       });
+
+      reviewTexts.push(review.text);
     }
 
-    const finalTrustedRating = trustedReviewCount > 0 ? (trustedRatingSum / trustedReviewCount) : (place.rating || 0);
+    // 至少需要 0.5 的有效权重才使用加权平均，否则 fallback 到 Google 原始评分
+    const MIN_TRUSTED_WEIGHT = 0.5;
+    // 当有效权重低于阈值，或者有任何评论被标记为 remove（权重=0）时，fallback 到 Google 原始评分
+    const hasRemovedReview = reviewData.some(r => r.credibility_action === 'remove');
+    const finalTrustedRating = (!hasRemovedReview && trustedReviewCount >= MIN_TRUSTED_WEIGHT)
+      ? (trustedRatingSum / trustedReviewCount)
+      : (place.rating || 0);
 
     // 3. 分析菜系与正宗度
     let cuisineAnalysis;
@@ -170,7 +185,7 @@ export async function POST(req: NextRequest) {
       cuisineAnalysis.cuisine_type, cuisineAnalysis.cuisine_confidence,
       cuisineAnalysis.authenticity, cuisineAnalysis.authenticity_score,
       cuisineAnalysis.authenticity_reason_zh, cuisineAnalysis.authenticity_reason_ja,
-      place.rating || 0, finalTrustedRating, place.user_ratings_total || 0, Math.floor(trustedReviewCount),
+      place.rating || 0, finalTrustedRating, place.user_ratings_total || 0, Math.round(trustedReviewCount),
       summary.zh, summary.ja,
       JSON.stringify(place.photos?.map(p => p.photo_reference) || [])
     ).run();
