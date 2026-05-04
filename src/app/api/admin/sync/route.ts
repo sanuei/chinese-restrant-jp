@@ -30,8 +30,63 @@ function extractTokyoWard(address: string): string | null {
   return match?.[1] || null;
 }
 
+// ─── 评分公式参数（Bayesian Average）─────────────────────────────────────────
+// m: 最小样本量（中位数），C: 全量餐厅 Google 评分均值
+let GLOBAL_M = 598;
+let GLOBAL_C = 4.5;
+let paramsLoaded = false;
+
+async function loadGlobalParams(db: Awaited<ReturnType<typeof getDb>>) {
+  if (paramsLoaded) return;
+  try {
+    const row = await db.prepare(`
+      SELECT
+        AVG(raw_rating) as C,
+        (SELECT raw_review_count FROM restaurants ORDER BY raw_review_count LIMIT 1 OFFSET MAX(0, (SELECT COUNT(*) FROM restaurants) / 2 - 1)) as m
+      FROM restaurants WHERE raw_rating > 0
+    `).first<{ C: number; m: number }>();
+    if (row) {
+      GLOBAL_C = Math.round((row.C || 4.5) * 10000) / 10000;
+      GLOBAL_M = Math.round(row.m || 598);
+    }
+  } catch (e) {
+    console.warn("[Rating] Could not load global params, using defaults:", e);
+  }
+  paramsLoaded = true;
+}
+
+/**
+ * 计算可信评分
+ * trusted_rating = Bayesian_Avg + authenticity_bonus + quality_penalty
+ *
+ * Bayesian WR  = v/(v+m) × R + m/(v+m) × C
+ * auth_bonus   = max(0, (auth_score - 60) / 100 × 0.3)
+ * quality_penalty = -0.2 if avg_helpful_votes >= 0 && avg_helpful_votes < 3, else 0
+ *   (Google API 不提供 per-review votes，传 -1 跳过；平台自写评论可记录 helpful_count)
+ */
+function computeTrustedRating(
+  rawRating: number,
+  rawReviewCount: number,
+  authScore: number,
+  avgHelpfulVotes: number
+): number {
+  const R = rawRating || 0;
+  const v = rawReviewCount || 0;
+
+  // 1. Bayesian Average
+  const WR = (v / (v + GLOBAL_M)) * R + (GLOBAL_M / (v + GLOBAL_M)) * GLOBAL_C;
+
+  // 2. authenticity_bonus（正宗度 60% 以下不加分）
+  const authBonus = Math.max(0, ((authScore || 0) - 60) / 100 * 0.3);
+
+  // 3. quality_penalty（篇均 helpful_votes < 3 扣分；-1 表示无数据不扣分）
+  const qualityPenalty = avgHelpfulVotes >= 0 && avgHelpfulVotes < 3 ? -0.2 : 0;
+
+  const final = WR + authBonus + qualityPenalty;
+  return Math.round(Math.min(5, Math.max(1, final)) * 10000) / 10000;
+}
+
 export async function POST(req: NextRequest) {
-  // 简单的鉴权
   const authHeader = req.headers.get("authorization");
   if (authHeader !== `Bearer ${process.env.ADMIN_SECRET}`) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -44,7 +99,8 @@ export async function POST(req: NextRequest) {
     }
 
     const db = await getDb();
-    
+    await loadGlobalParams(db);
+
     // 1. 获取 Google Maps 详情
     const place = await getPlaceDetails(place_id);
     if (!place) {
@@ -52,8 +108,6 @@ export async function POST(req: NextRequest) {
     }
 
     const reviews = place.reviews || [];
-    let trustedRatingSum = 0;
-    let trustedReviewCount = 0;
     const reviewData: ReviewData[] = [];
     const reviewTexts: string[] = [];
 
@@ -68,7 +122,6 @@ export async function POST(req: NextRequest) {
       );
     } catch (e) {
       console.error("MiniMax Batch Review Analysis Error:", e);
-      // Fallback: 所有评论默认 keep
       credibilityResults = reviewsWithText.map(() => ({
         credibility_score: 50, credibility_action: "keep" as const, credibility_reason: "分析失败默认保留"
       }));
@@ -77,15 +130,6 @@ export async function POST(req: NextRequest) {
     for (let i = 0; i < reviewsWithText.length; i++) {
       const review = reviewsWithText[i];
       const credibility = credibilityResults[i] || { credibility_score: 50, credibility_action: "keep" as const, credibility_reason: "分析失败默认保留" };
-
-      let weight = 1.0;
-      if (credibility.credibility_action === "flag") weight = 0.3;
-      if (credibility.credibility_action === "remove") weight = 0;
-
-      if (weight > 0) {
-        trustedRatingSum += (review.rating * weight);
-        trustedReviewCount += weight;
-      }
 
       reviewData.push({
         id: `${place_id}_${review.time}`,
@@ -102,14 +146,6 @@ export async function POST(req: NextRequest) {
 
       reviewTexts.push(review.text);
     }
-
-    // 至少需要 0.5 的有效权重才使用加权平均，否则 fallback 到 Google 原始评分
-    const MIN_TRUSTED_WEIGHT = 0.5;
-    // 当有效权重低于阈值，或者有任何评论被标记为 remove（权重=0）时，fallback 到 Google 原始评分
-    const hasRemovedReview = reviewData.some(r => r.credibility_action === 'remove');
-    const finalTrustedRating = (!hasRemovedReview && trustedReviewCount >= MIN_TRUSTED_WEIGHT)
-      ? (trustedRatingSum / trustedReviewCount)
-      : (place.rating || 0);
 
     // 3. 分析菜系与正宗度
     let cuisineAnalysis;
@@ -131,8 +167,8 @@ export async function POST(req: NextRequest) {
     let summary;
     try {
       summary = await generateBilingualSummary(
-        place.name, 
-        reviewTexts.slice(0, 5), 
+        place.name,
+        reviewTexts.slice(0, 5),
         place.rating || 0,
         cuisineAnalysis.authenticity
       );
@@ -143,11 +179,19 @@ export async function POST(req: NextRequest) {
 
     const ward = extractTokyoWard(place.formatted_address);
 
-    // 5. 存入 D1 数据库
-    // 5.1 存储餐厅
+    // 5. 用新公式计算可信评分
+    // Google API 不提供 per-review helpful_count，quality_penalty 不生效（传 -1）
+    const finalTrustedRating = computeTrustedRating(
+      place.rating || 0,
+      place.user_ratings_total || 0,
+      cuisineAnalysis.authenticity_score,
+      -1
+    );
+
+    // 6. 存入 D1 数据库
     await db.prepare(`
       INSERT INTO restaurants (
-        id, name_original, address, city, ward, lat, lng, phone, website, google_maps_url, price_level, 
+        id, name_original, address, city, ward, lat, lng, phone, website, google_maps_url, price_level,
         cuisine_type, cuisine_confidence, authenticity, authenticity_score,
         authenticity_reason_zh, authenticity_reason_ja,
         raw_rating, trusted_rating, raw_review_count, trusted_review_count,
@@ -185,35 +229,34 @@ export async function POST(req: NextRequest) {
       cuisineAnalysis.cuisine_type, cuisineAnalysis.cuisine_confidence,
       cuisineAnalysis.authenticity, cuisineAnalysis.authenticity_score,
       cuisineAnalysis.authenticity_reason_zh, cuisineAnalysis.authenticity_reason_ja,
-      place.rating || 0, finalTrustedRating, place.user_ratings_total || 0, Math.round(trustedReviewCount),
+      place.rating || 0, finalTrustedRating, place.user_ratings_total || 0, place.user_ratings_total || 0,
       summary.zh, summary.ja,
       JSON.stringify(place.photos?.map(p => p.photo_reference) || [])
     ).run();
 
-    // 5.2 存储评论 (简化版：先删除旧评论再插入，以避免重复)
+    // 6.2 存储评论（先删后插，避免重复）
     await db.prepare(`DELETE FROM reviews WHERE restaurant_id = ? AND source = 'google'`).bind(place_id).run();
-    
+
     if (reviewData.length > 0) {
-      // 批量插入
       const stmt = db.prepare(`
         INSERT INTO reviews (
           id, restaurant_id, author_name, author_photo_url, rating, text,
           published_at, credibility_score, credibility_action, credibility_reason, source
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'google')
       `);
-      
-      const batchArgs = reviewData.map(r => 
+
+      const batchArgs = reviewData.map(r =>
         stmt.bind(
           r.id, r.restaurant_id, r.author_name, r.author_photo_url, r.rating, r.text,
           r.published_at, r.credibility_score, r.credibility_action, r.credibility_reason
         )
       );
-      
+
       await db.batch(batchArgs);
     }
 
-    return NextResponse.json({ 
-      success: true, 
+    return NextResponse.json({
+      success: true,
       restaurant: place.name,
       cuisine: cuisineAnalysis,
       trusted_rating: finalTrustedRating

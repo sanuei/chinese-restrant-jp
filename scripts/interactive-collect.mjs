@@ -20,16 +20,21 @@ import readline from "readline";
 import { createInterface } from "readline";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-dotenv.config({ path: ".env.local", quiet: true });
+// ─── Env ───────────────────────────────────────────────────────────────────
+// dotenv 必须在读取 process.env 之前加载
+dotenv.config({ path: join(__dirname, "..", ".env.local"), quiet: true });
+
+function getEnv(key, fallback = "") {
+  return process.env[key] || fallback;
+}
+
 const DATA_DIR = join(__dirname, "..", "data");
 const CANDIDATES_FILE = join(DATA_DIR, "candidates.json");
 const RESULTS_FILE = join(DATA_DIR, "sync-results.json");
-
-// ─── Env ───────────────────────────────────────────────────────────────────
-const GOOGLE_MAPS_API_KEY = process.env.GOOGLE_MAPS_API_KEY;
-const ADMIN_SECRET = process.env.ADMIN_SECRET;
-const SYNC_API_BASE = process.env.SYNC_API_BASE || "http://localhost:3000";
-const MIN_RATING = Number(process.env.COLLECT_MIN_RATING || 4.0);
+const GOOGLE_MAPS_API_KEY = getEnv("GOOGLE_MAPS_API_KEY");
+const ADMIN_SECRET = getEnv("ADMIN_SECRET");
+const SYNC_API_BASE = getEnv("SYNC_API_BASE", "http://localhost:3000");
+const MIN_RATING = Number(getEnv("COLLECT_MIN_RATING", "4.0"));
 
 // ─── 数据库查询 ─────────────────────────────────────────────────────────────
 async function queryDb(sql) {
@@ -340,64 +345,86 @@ async function actionSync() {
 async function actionRecalc() {
   console.log("\n🧮 批量重算评分");
   console.log("─".repeat(40));
-  console.log("  说明: 不调 AI API，直接用原始评分和评论数按公式重算");
-  console.log("  公式: trusted_rating = raw_rating (当有 remove 评论时)");
-  console.log("        trusted_review_count = 实际评论权重和\n");
+  console.log("  公式: trusted_rating = Bayesian_Avg + authenticity_bonus + quality_penalty");
+  console.log("  Bayesian: WR = v/(v+m)×R + m/(v+m)×C  (m=598, C=4.5)");
+  console.log("  auth_bonus: max(0, (auth_score-60)/100×0.3)");
+  console.log("  quality_penalty: -0.2 if avg_helpful_votes < 3 (平台自写评论)\n");
 
   const restaurants = await getAllRestaurants();
   if (restaurants.length === 0) { console.log("数据库为空。"); return; }
 
+  // 加载全局参数
+  let m, C;
+  try {
+    const row = await queryDb(`
+      SELECT
+        AVG(raw_rating) as C,
+        (SELECT raw_review_count FROM restaurants ORDER BY raw_review_count
+         LIMIT 1 OFFSET MAX(0, (SELECT COUNT(*) FROM restaurants) / 2 - 1)) as m
+      FROM restaurants WHERE raw_rating > 0
+    `);
+    m = row[0]?.m || 598;
+    C = row[0]?.C || 4.5;
+    console.log(`  全局参数: m=${m}, C=${C.toFixed(4)}\n`);
+  } catch (e) {
+    m = 598; C = 4.5;
+    console.log(`  全局参数: m=598, C=4.5 (fallback)\n`);
+  }
+
   // 筛选
-  const minRating = parseFloat(await askQuestion("最低 trusted_rating (空则不限): ")) || 0;
-  const selWards = await askMultiSelect(["新宿", "池袋", "上野", "高田馬場", "秋葉原"], "地区 (空则全部)");
-  const onlyZero = (await askQuestion("仅显示 trusted_review_count=0 的? (y/N): ")).trim().toLowerCase() === "y";
+  const selWards = await askMultiSelect(["新宿", "池袋", "上野", "高田馬場", "秋葉原", "豊島区", "台東区"], "地区 (空则全部)");
+  const selAuth = await askMultiSelect(["authentic", "adapted", "japanese", "unknown"], "正宗度 (空则全部)");
+  const onlyZero = (await askQuestion("仅显示 auth_score >= 60 的? (y/N): ")).trim().toLowerCase() === "y";
 
   let filtered = restaurants.filter(r => {
-    if (onlyZero && r.trusted_review_count !== 0) return false;
-    if (minRating && (r.trusted_rating || 0) < minRating) return false;
     if (selWards.length && !selWards.some(w => r.ward && r.ward.includes(w))) return false;
+    if (selAuth.length && !selAuth.includes(r.authenticity)) return false;
+    if (onlyZero && (r.authenticity_score || 0) < 60) return false;
     return true;
   });
 
   console.log(`\n找到 ${filtered.length} 家符合条件`);
   if (filtered.length === 0) return;
 
-  // 显示前 20 家
-  console.log("\n前 20 家:");
-  console.log("  ID           | 名称                              | 菜系      | 评分   | 评论数 | 地区");
-  console.log("  " + "─".repeat(95));
+  // 显示前 20 家预览
+  console.log("\n前 20 家预览 (旧评分 → 新评分):");
+  console.log("  名称                              | 旧   | 新   | 评论数 | auth_score | 正宗度");
+  console.log("  " + "─".repeat(90));
   filtered.slice(0, 20).forEach(r => {
-    const name = (r.name_original || "").slice(0, 30);
-    console.log(`  ${r.id.slice(0, 12)} | ${name.padEnd(30)} | ${((r.cuisine_type || "").padEnd(8)).slice(0, 8)} | ${((r.trusted_rating || 0)+"").padStart(5)} | ${((r.trusted_review_count)+"").padStart(6)} | ${r.ward || "-"}`);
+    const authScore = r.authenticity_score || 0;
+    const authBonus = Math.max(0, (authScore - 60) / 100 * 0.3);
+    const v = r.raw_review_count || 0;
+    const R = r.raw_rating || 0;
+    const WR = (v / (v + m)) * R + (m / (v + m)) * C;
+    const newRating = Math.round(Math.min(5, Math.max(1, WR + authBonus)) * 10) / 10;
+    const name = (r.name_original || "").slice(0, 30).padEnd(30);
+    console.log(`  ${name} | ${((r.trusted_rating || 0)+"").padStart(4)} | ${(newRating+"").padStart(4)} | ${(v+"").padStart(7)} | ${(authScore+"").padStart(10)} | ${r.authenticity || "-"}`);
   });
 
   const confirm = await askConfirm(`\n更新这 ${filtered.length} 家?`);
   if (!confirm) return;
 
-  // 对每家重新 sync（因为现在的逻辑会正确 fallback）
-  console.log("\n重新同步中...");
-  const delay = parseInt(await askQuestion("间隔秒数 (默认 2): ")) || 2;
+  // 直接 SQL 更新，不调 API
   let ok = 0, fail = 0;
-
   for (let i = 0; i < filtered.length; i++) {
     const r = filtered[i];
-    process.stdout.write(`\r  [${i + 1}/${filtered.length}] ${r.name_original?.slice(0, 25)}... `);
+    const authScore = r.authenticity_score || 0;
+    const authBonus = Math.max(0, (authScore - 60) / 100 * 0.3);
+    const v = r.raw_review_count || 0;
+    const R = r.raw_rating || 0;
+    const WR = (v / (v + m)) * R + (m / (v + m)) * C;
+    const newRating = Math.round(Math.min(5, Math.max(1, WR + authBonus)) * 10000) / 10000;
 
     try {
-      const result = await syncRestaurant(r.id);
-      if (result.success) {
-        ok++;
-        process.stdout.write(`✓ trusted_rating=${result.trusted_rating}`);
-      } else {
-        fail++;
-        process.stdout.write(`✗ ${result.error}`);
-      }
+      await queryDb(
+        `UPDATE restaurants SET trusted_rating=${newRating}, updated_at=datetime('now') WHERE id='${r.id}'`
+      );
+      ok++;
+      process.stdout.write(`\r  [${i + 1}/${filtered.length}] ✓ ${r.name_original?.slice(0, 30)} → ${newRating.toFixed(4)}`);
     } catch (e) {
       fail++;
-      process.stdout.write(`✗ ${e.message}`);
+      process.stdout.write(`\r  [${i + 1}/${filtered.length}] ✗ ${r.name_original?.slice(0, 30)}: ${e.message}`);
     }
-
-    if (i < filtered.length - 1) await new Promise(resolve => setTimeout(resolve, delay * 1000));
   }
 
   console.log(`\n\n✅ 完成! 成功 ${ok}，失败 ${fail}`);
@@ -471,6 +498,24 @@ async function actionView() {
   const byAuth = await queryDb("SELECT authenticity, COUNT(*) as cnt FROM restaurants GROUP BY authenticity ORDER BY cnt DESC");
   byAuth.forEach(r => {
     console.log(`  ${((r.authenticity || "unknown")+"").padEnd(10)} ${r.cnt}`);
+  });
+
+  console.log("\n按 authenticity_score 分布:");
+  const byScore = await queryDb(`
+    SELECT
+      CASE
+        WHEN authenticity_score >= 80 THEN '80-100 (正宗+)'
+        WHEN authenticity_score >= 60 THEN '60-79  (达标)'
+        WHEN authenticity_score >= 40 THEN '40-59  (一般)'
+        ELSE '0-39   (存疑)'
+      END as bucket,
+      COUNT(*) as cnt
+    FROM restaurants
+    GROUP BY bucket
+    ORDER BY bucket DESC
+  `);
+  byScore.forEach(r => {
+    console.log(`  ${((r.bucket || "")+"").padEnd(20)} ${r.cnt}`);
   });
 
   console.log("\n最新 10 家:");
