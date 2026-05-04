@@ -5,7 +5,7 @@ export default createMiddleware(routing);
 
 export const config = {
   matcher: [
-    // 匹配所有路径，除了 API 路由、静态文件、图片优化
-    "/((?!api|_next|_vercel|.*\\..*).*)",
+    // 匹配所有路径，排除 API、静态文件、_next 及 /admin
+    "/((?!api|_next|_vercel|admin|.*\\..*).*)",
   ],
 };

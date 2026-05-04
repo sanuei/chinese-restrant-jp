@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/cloudflare";
 import { getPlaceDetails } from "@/lib/google-maps";
+import { getDataForSeoReviews } from "@/lib/dataforseo";
 import {
   analyzeReviewsCredibilityBatch,
   type ReviewCredibilityResult,
@@ -101,23 +102,32 @@ export async function POST(req: NextRequest) {
     const db = await getDb();
     await loadGlobalParams(db);
 
-    // 1. 获取 Google Maps 详情
+    // 1. 获取 Google Maps 详情（照片 + 基本信息）
     const place = await getPlaceDetails(place_id);
     if (!place) {
       return NextResponse.json({ error: "Place not found" }, { status: 404 });
     }
 
-    const reviews = place.reviews || [];
+    // 2. 获取评论（DataForSEO，比 Google API 更全）
+    let dfseoReviews: Awaited<ReturnType<typeof getDataForSeoReviews>> = [];
+    try {
+      dfseoReviews = await getDataForSeoReviews(place_id, 30);
+    } catch (e) {
+      console.warn(`DataForSEO reviews failed for ${place_id}: ${e instanceof Error ? e.message : String(e)}`);
+    }
+
+    // 优先使用 DataForSEO 评论，fallback 到 Google 评论
+    const sourceReviews = dfseoReviews.length > 0 ? dfseoReviews : [];
     const reviewData: ReviewData[] = [];
     const reviewTexts: string[] = [];
 
-    // 2. 一次性分析所有评论可信度（单次 API 调用）
-    const reviewsWithText = reviews.filter(r => r.text);
+    // 3. 一次性分析所有评论可信度（单次 API 调用）
+    const reviewsWithText = sourceReviews.filter(r => r.review_text);
     let credibilityResults: ReviewCredibilityResult[];
 
     try {
       credibilityResults = await analyzeReviewsCredibilityBatch(
-        reviewsWithText.map(r => ({ text: r.text, rating: r.rating, author_name: r.author_name })),
+        reviewsWithText.map(r => ({ text: r.review_text, rating: r.rating, author_name: r.profile_name })),
         place.name
       );
     } catch (e) {
@@ -132,19 +142,19 @@ export async function POST(req: NextRequest) {
       const credibility = credibilityResults[i] || { credibility_score: 50, credibility_action: "keep" as const, credibility_reason: "分析失败默认保留" };
 
       reviewData.push({
-        id: `${place_id}_${review.time}`,
+        id: review.review_id || `${place_id}_${i}`,
         restaurant_id: place_id,
-        author_name: review.author_name,
-        author_photo_url: review.profile_photo_url,
+        author_name: review.profile_name,
+        author_photo_url: review.profile_image_url,
         rating: review.rating,
-        text: review.text,
-        published_at: new Date(review.time * 1000).toISOString(),
+        text: review.review_text,
+        published_at: review.timestamp,
         credibility_score: credibility.credibility_score,
         credibility_action: credibility.credibility_action,
         credibility_reason: credibility.credibility_reason,
       });
 
-      reviewTexts.push(review.text);
+      reviewTexts.push(review.review_text);
     }
 
     // 3. 分析菜系与正宗度
