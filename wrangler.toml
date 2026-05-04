@@ -1,0 +1,30 @@
+name = "gachi-chukanavi"
+compatibility_date = "2024-12-18"
+compatibility_flags = ["nodejs_compat"]
+pages_build_output_dir = ".open-next/assets"
+
+# 本地开发 D1 数据库
+[[d1_databases]]
+binding = "DB"
+database_name = "gachi-chukanavi-db"
+database_id = "local-dev"  # 部署后替换为真实 ID
+
+# KV Namespace（AI摘要缓存）
+[[kv_namespaces]]
+binding = "CACHE"
+id = "local-dev-kv"  # 部署后替换为真实 ID
+
+# R2 对象存储（图片）
+[[r2_buckets]]
+binding = "IMAGES"
+bucket_name = "gachi-images"
+
+# Cron 定时任务（每周同步新评论）
+[triggers]
+crons = ["0 2 * * 1"]  # 每周一 02:00 UTC
+
+# 本地开发变量（敏感 key 用 wrangler secret 管理）
+[vars]
+APP_NAME_ZH = "真味中华"
+APP_NAME_JA = "ガチ中華ナビ"
+DEFAULT_CITY = "tokyo"

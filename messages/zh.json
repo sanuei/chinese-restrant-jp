@@ -1,0 +1,59 @@
+{
+  "nav": {
+    "home": "首页",
+    "restaurants": "餐厅",
+    "cuisines": "菜系",
+    "map": "地图",
+    "about": "关于"
+  },
+  "home": {
+    "hero_title": "真味中华",
+    "hero_subtitle": "在日中国餐厅权威评鉴",
+    "hero_tagline": "在异乡，让每一口都像回家",
+    "search_placeholder": "搜索餐厅名称、菜系、地区…",
+    "search_btn": "搜索",
+    "section_cuisines": "按菜系找餐厅",
+    "section_top": "东京口碑推荐",
+    "section_new": "最近新评价"
+  },
+  "auth_badge": {
+    "authentic": "正宗中华",
+    "adapted": "改良中华",
+    "japanese": "日式中华",
+    "unknown": "待认证"
+  },
+  "cuisine": {
+    "sichuan": "川菜",
+    "cantonese": "粤菜",
+    "northern": "北方菜",
+    "fujian": "闽菜",
+    "hunan": "湘菜",
+    "jiangsu": "苏浙菜",
+    "northwest": "西北菜",
+    "yunnan": "云贵菜",
+    "other": "综合/其他"
+  },
+  "restaurant": {
+    "trusted_rating": "可信评分",
+    "raw_rating": "原始评分",
+    "reviews": "条评论",
+    "trusted_reviews": "条真实评论",
+    "filtered": "已过滤 {count} 条低可信评论",
+    "price_level": ["", "¥ 实惠", "¥¥ 适中", "¥¥¥ 偏贵", "¥¥¥¥ 高端"],
+    "ai_summary": "AI 综合摘要",
+    "highlights": "大家最满意",
+    "concerns": "注意事项",
+    "authenticity_reason": "认证依据"
+  },
+  "review": {
+    "write": "写评论",
+    "helpful": "有帮助",
+    "flagged": "已标记为可疑"
+  },
+  "footer": {
+    "about": "关于我们",
+    "contact": "联系方式",
+    "privacy": "隐私政策",
+    "disclaimer": "评分仅供参考，AI 认证结果不代表价值判断"
+  }
+}

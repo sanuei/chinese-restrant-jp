@@ -1,0 +1,303 @@
+@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;700;900&family=Noto+Sans+SC:wght@400;500;700&display=swap');
+
+@import "tailwindcss";
+
+/* ================================================
+   ガチ中華ナビ 设计系统 — 赤金·雅韵
+   ================================================ */
+
+:root {
+  /* 主色：朱红 */
+  --color-vermilion-50: oklch(0.97 0.02 25);
+  --color-vermilion-100: oklch(0.93 0.05 25);
+  --color-vermilion-200: oklch(0.86 0.09 25);
+  --color-vermilion-500: oklch(0.60 0.18 25);
+  --color-vermilion-700: oklch(0.45 0.18 25);
+  --color-vermilion-900: oklch(0.30 0.14 25);
+
+  /* 辅色：金黄 */
+  --color-gold-300: oklch(0.88 0.12 80);
+  --color-gold-500: oklch(0.78 0.15 80);
+  --color-gold-700: oklch(0.62 0.14 78);
+
+  /* 背景：温暖米白 */
+  --color-warm-50: oklch(0.97 0.01 85);
+  --color-warm-100: oklch(0.94 0.02 85);
+  --color-warm-200: oklch(0.88 0.03 85);
+
+  /* 文字：深石色 */
+  --color-ink-900: oklch(0.18 0.02 30);
+  --color-ink-700: oklch(0.32 0.02 30);
+  --color-ink-400: oklch(0.60 0.01 30);
+
+  /* 字体 */
+  --font-serif: 'Noto Serif SC', 'Source Han Serif SC', serif;
+  --font-sans: 'Noto Sans SC', 'Hiragino Sans', sans-serif;
+
+  /* 圆角 */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-full: 9999px;
+
+  /* 阴影 */
+  --shadow-card: 0 2px 8px oklch(0.18 0.02 30 / 0.08), 0 1px 2px oklch(0.18 0.02 30 / 0.06);
+  --shadow-hover: 0 8px 24px oklch(0.18 0.02 30 / 0.14), 0 2px 6px oklch(0.18 0.02 30 / 0.08);
+}
+
+/* ================================================
+   基础样式
+   ================================================ */
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: var(--font-sans);
+  background-color: var(--color-warm-50);
+  color: var(--color-ink-900);
+  line-height: 1.65;
+}
+
+/* ================================================
+   Tailwind 自定义工具类
+   ================================================ */
+
+@theme {
+  --color-vermilion-50: oklch(0.97 0.02 25);
+  --color-vermilion-100: oklch(0.93 0.05 25);
+  --color-vermilion-200: oklch(0.86 0.09 25);
+  --color-vermilion-500: oklch(0.60 0.18 25);
+  --color-vermilion-700: oklch(0.45 0.18 25);
+  --color-vermilion-900: oklch(0.30 0.14 25);
+  --color-gold-300: oklch(0.88 0.12 80);
+  --color-gold-500: oklch(0.78 0.15 80);
+  --color-gold-700: oklch(0.62 0.14 78);
+  --color-warm-50: oklch(0.97 0.01 85);
+  --color-warm-100: oklch(0.94 0.02 85);
+  --color-warm-200: oklch(0.88 0.03 85);
+  --color-ink-900: oklch(0.18 0.02 30);
+  --color-ink-700: oklch(0.32 0.02 30);
+  --color-ink-400: oklch(0.60 0.01 30);
+  --font-serif: 'Noto Serif SC', serif;
+  --font-sans: 'Noto Sans SC', sans-serif;
+}
+
+/* ================================================
+   认证徽章（印章风格）
+   ================================================ */
+
+.badge-authentic {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: var(--radius-full);
+  font-size: 0.75rem;
+  font-weight: 700;
+  font-family: var(--font-serif);
+  letter-spacing: 0.05em;
+  background: var(--color-vermilion-700);
+  color: #fff;
+  border: 1.5px solid var(--color-vermilion-900);
+  box-shadow: inset 0 1px 0 oklch(1 0 0 / 0.15);
+}
+
+.badge-adapted {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: var(--radius-full);
+  font-size: 0.75rem;
+  font-weight: 700;
+  font-family: var(--font-serif);
+  letter-spacing: 0.05em;
+  background: var(--color-gold-500);
+  color: oklch(0.20 0.05 80);
+  border: 1.5px solid var(--color-gold-700);
+}
+
+.badge-japanese {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: var(--radius-full);
+  font-size: 0.75rem;
+  font-weight: 700;
+  font-family: var(--font-serif);
+  letter-spacing: 0.05em;
+  background: oklch(0.92 0.04 230);
+  color: oklch(0.28 0.08 230);
+  border: 1.5px solid oklch(0.72 0.08 230);
+}
+
+.badge-unknown {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: var(--radius-full);
+  font-size: 0.75rem;
+  font-weight: 500;
+  background: var(--color-warm-200);
+  color: var(--color-ink-400);
+  border: 1.5px solid oklch(0.80 0.01 85);
+}
+
+/* ================================================
+   餐厅卡片
+   ================================================ */
+
+.restaurant-card {
+  background: white;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+  overflow: hidden;
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
+  border: 1px solid oklch(0.92 0.01 85);
+}
+
+.restaurant-card:hover {
+  box-shadow: var(--shadow-hover);
+  transform: translateY(-2px);
+}
+
+/* ================================================
+   菜系标签颜色
+   ================================================ */
+
+.cuisine-sichuan  { background: oklch(0.95 0.06 25); color: oklch(0.42 0.18 25); border-color: oklch(0.85 0.10 25); }
+.cuisine-cantonese{ background: oklch(0.96 0.04 150); color: oklch(0.38 0.12 150); border-color: oklch(0.82 0.08 150); }
+.cuisine-northern { background: oklch(0.96 0.03 260); color: oklch(0.38 0.10 260); border-color: oklch(0.82 0.07 260); }
+.cuisine-fujian   { background: oklch(0.96 0.04 195); color: oklch(0.38 0.10 195); border-color: oklch(0.82 0.08 195); }
+.cuisine-hunan    { background: oklch(0.96 0.05 38); color: oklch(0.42 0.15 38); border-color: oklch(0.85 0.10 38); }
+.cuisine-jiangsu  { background: oklch(0.96 0.04 120); color: oklch(0.38 0.10 120); border-color: oklch(0.82 0.08 120); }
+.cuisine-northwest{ background: oklch(0.96 0.04 70); color: oklch(0.42 0.12 70); border-color: oklch(0.84 0.09 70); }
+.cuisine-yunnan   { background: oklch(0.96 0.04 165); color: oklch(0.38 0.10 165); border-color: oklch(0.82 0.08 165); }
+.cuisine-other    { background: var(--color-warm-100); color: var(--color-ink-400); border-color: var(--color-warm-200); }
+
+.cuisine-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+  font-size: 0.72rem;
+  font-weight: 600;
+  border: 1px solid;
+}
+
+/* ================================================
+   AI 摘要区（毛边纸质感）
+   ================================================ */
+
+.ai-summary-card {
+  background: linear-gradient(135deg, oklch(0.97 0.02 80) 0%, oklch(0.95 0.03 75) 100%);
+  border: 1px solid var(--color-gold-300);
+  border-radius: var(--radius-md);
+  padding: 16px 20px;
+  position: relative;
+}
+
+.ai-summary-card::before {
+  content: "AI";
+  position: absolute;
+  top: -8px;
+  left: 16px;
+  background: var(--color-gold-500);
+  color: white;
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 1px 8px;
+  border-radius: var(--radius-full);
+  letter-spacing: 0.1em;
+}
+
+/* ================================================
+   星级评分
+   ================================================ */
+
+.stars {
+  display: inline-flex;
+  gap: 1px;
+  color: var(--color-gold-500);
+}
+
+/* ================================================
+   Hero 区域
+   ================================================ */
+
+.hero-pattern {
+  background-image:
+    radial-gradient(circle at 20% 50%, oklch(0.45 0.18 25 / 0.08) 0%, transparent 50%),
+    radial-gradient(circle at 80% 20%, oklch(0.78 0.15 80 / 0.10) 0%, transparent 50%),
+    url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23c9a227' fill-opacity='0.04'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+}
+
+/* ================================================
+   按钮
+   ================================================ */
+
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 10px 24px;
+  background: var(--color-vermilion-700);
+  color: white;
+  border-radius: var(--radius-md);
+  font-weight: 600;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.1s ease;
+  border: none;
+}
+
+.btn-primary:hover {
+  background: var(--color-vermilion-900);
+  transform: translateY(-1px);
+}
+
+.btn-primary:active {
+  transform: translateY(0);
+}
+
+/* ================================================
+   搜索框
+   ================================================ */
+
+.search-input {
+  width: 100%;
+  padding: 14px 20px;
+  border: 2px solid var(--color-warm-200);
+  border-radius: var(--radius-lg);
+  font-size: 1rem;
+  font-family: var(--font-sans);
+  background: white;
+  color: var(--color-ink-900);
+  outline: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.search-input:focus {
+  border-color: var(--color-vermilion-500);
+  box-shadow: 0 0 0 3px oklch(0.60 0.18 25 / 0.12);
+}
+
+.search-input::placeholder {
+  color: var(--color-ink-400);
+}
+
+/* ================================================
+   分割线（回字纹风格）
+   ================================================ */
+
+.divider-chinese {
+  height: 1px;
+  background: linear-gradient(to right, transparent, var(--color-gold-300), transparent);
+  margin: 32px 0;
+}
