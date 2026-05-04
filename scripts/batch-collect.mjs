@@ -127,8 +127,14 @@ function addCandidate(map, result, query, area, keyword) {
   const key = result.place_id;
   const source = `${area}/${keyword}`;
 
-  if (map.has(key)) {
-    map.get(key).sources.add(source);
+  const existing = map.get(key);
+  if (existing) {
+    // sources 可能是数组（从 JSON 加载）或 Set（新建时）
+    if (Array.isArray(existing.sources)) {
+      if (!existing.sources.includes(source)) existing.sources.push(source);
+    } else {
+      existing.sources.add(source);
+    }
     return;
   }
 
