@@ -3,6 +3,7 @@ import { getTranslations } from "next-intl/server";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { Star, MapPin, Phone, Globe, ShieldCheck, ShieldAlert, MapPinned } from "lucide-react";
+import RatingExplainer from "@/components/RatingExplainer";
 import {
   getRating,
   getRestaurantName,
@@ -123,6 +124,14 @@ export default async function RestaurantDetailPage({
               </div>
             </div>
           </div>
+
+          <RatingExplainer
+            locale={locale}
+            rawRating={restaurant.raw_rating || 0}
+            rawReviewCount={restaurant.raw_review_count || 0}
+            trustedRating={getRating(restaurant)}
+            authenticityScore={restaurant.authenticity_score || 0}
+          />
 
           <div className="divider-chinese" />
 
