@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import CuisineGrid from "@/components/CuisineGrid";
+import { getDb } from "@/lib/cloudflare";
 
 type Props = { params: Promise<{ locale: string }> };
 
@@ -10,8 +11,30 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   };
 }
 
+async function getCuisineCounts(): Promise<Record<string, number>> {
+  try {
+    const db = await getDb();
+    const result = await db
+      .prepare(
+        `SELECT cuisine_type, COUNT(*) as count
+         FROM restaurants
+         WHERE is_active = 1
+         GROUP BY cuisine_type`
+      )
+      .all<{ cuisine_type: string; count: number }>();
+    const counts: Record<string, number> = {};
+    for (const row of result.results) {
+      counts[row.cuisine_type] = row.count;
+    }
+    return counts;
+  } catch {
+    return {};
+  }
+}
+
 export default async function CuisinesPage({ params }: Props) {
   const { locale } = await params;
+  const cuisineCounts = await getCuisineCounts();
   const copy = locale === "zh"
     ? {
         eyebrow: "菜系导航",
@@ -29,7 +52,8 @@ export default async function CuisinesPage({ params }: Props) {
       <div className="mb-2 text-xs font-bold uppercase tracking-[0.18em] text-vermilion-700">{copy.eyebrow}</div>
       <h1 className="font-serif text-3xl font-black text-ink-900">{copy.title}</h1>
       <p className="mt-2 max-w-2xl text-sm text-ink-400">{copy.subtitle}</p>
-      <CuisineGrid locale={locale} />
+      <CuisineGrid locale={locale} counts={cuisineCounts} />
     </div>
   );
 }
+
