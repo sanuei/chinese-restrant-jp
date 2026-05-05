@@ -395,7 +395,7 @@ export default function AdminCollectPage() {
   }
 
   async function refreshExisting() {
-    const count = Number(syncLimit) || 10;
+    const count = 10;
     setRunning(true);
     setLogs([]);
     setStatus("读取已有餐厅...");
