@@ -31,7 +31,7 @@ async function getCuisineCounts(): Promise<Record<string, number>> {
       .all<{ cuisine_type: string; count: number }>();
 
     const counts: Record<string, number> = {};
-    for (const row of result.results) {
+    for (const row of result.results ?? []) {
       counts[row.cuisine_type] = row.count;
     }
     return counts;
