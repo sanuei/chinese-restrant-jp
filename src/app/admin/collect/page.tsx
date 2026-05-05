@@ -152,7 +152,7 @@ export default function AdminCollectPage() {
   const [minRating, setMinRating] = useState("4.0");
   const [minReviews, setMinReviews] = useState("50");
   const [limit, setLimit] = useState("80");
-  const [syncLimit, setSyncLimit] = useState("10");
+
   const [requireTokyo, setRequireTokyo] = useState(true);
   const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -194,7 +194,7 @@ export default function AdminCollectPage() {
     const keywordList = splitList(keywords);
     const tasks = areaList.flatMap((area) => keywordList.map((keyword) => ({ area, keyword })));
     const maxCandidates = Math.max(1, Math.min(300, Number(limit) || 80));
-    const autoSelectCount = Math.max(1, Number(syncLimit) || 10);
+    const autoSelectCount = 10; // 搜索完成后默认自动选中前10个
 
     if (tasks.length === 0) {
       setStatus("请先输入区域和关键词");
@@ -332,7 +332,7 @@ export default function AdminCollectPage() {
   }
 
   async function syncSelected() {
-    const queue = syncableSelectedCandidates.slice(0, Number(syncLimit) || syncableSelectedCandidates.length);
+    const queue = syncableSelectedCandidates; // 同步所有选中项，不限数量
     if (queue.length === 0) {
       setStatus("没有可同步的选中候选");
       return;
@@ -434,7 +434,7 @@ export default function AdminCollectPage() {
   }
 
   function selectTopCandidates() {
-    const count = Math.max(1, Number(syncLimit) || 10);
+    const count = 10; // 选前10个
     setSelected(new Set(selectableCandidates.slice(0, count).map((candidate) => candidate.placeId)));
   }
 
@@ -497,11 +497,7 @@ export default function AdminCollectPage() {
             <input value={limit} onChange={(event) => setLimit(event.target.value)}
               className="w-24 border border-warm-200 rounded-lg px-3 py-2 text-sm" />
           </label>
-          <label>
-            <span className="text-xs text-gray-500 block mb-1">每次同步</span>
-            <input value={syncLimit} onChange={(event) => setSyncLimit(event.target.value)}
-              className="w-24 border border-warm-200 rounded-lg px-3 py-2 text-sm" />
-          </label>
+
           <label className="flex items-center gap-2 h-[38px] text-sm text-gray-700">
             <input type="checkbox" checked={requireTokyo} onChange={(event) => setRequireTokyo(event.target.checked)} />
             只要東京都地址
@@ -590,7 +586,7 @@ export default function AdminCollectPage() {
             <div className="flex flex-wrap gap-2">
               <button onClick={selectTopCandidates} disabled={loading || running || selectableCandidates.length === 0}
                 className="inline-flex items-center gap-1.5 rounded-md border border-warm-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-warm-100 disabled:opacity-50">
-                <SquareCheckBig className="h-3.5 w-3.5" /> 选前 {Math.max(1, Number(syncLimit) || 10)}
+                <SquareCheckBig className="h-3.5 w-3.5" /> 选前10
               </button>
               <button onClick={selectAllVisible} disabled={loading || running || selectableCandidates.length === 0}
                 className="inline-flex items-center gap-1.5 rounded-md border border-warm-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-warm-100 disabled:opacity-50">

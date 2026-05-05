@@ -1,21 +1,24 @@
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 
-type Props = { locale: string };
-
 const CUISINES = [
-  { key: "sichuan",   emoji: "🌶️", count: 120 },
-  { key: "cantonese", emoji: "🦐", count: 85 },
-  { key: "northern",  emoji: "🥟", count: 93 },
-  { key: "fujian",    emoji: "🌊", count: 31 },
-  { key: "hunan",     emoji: "🌿", count: 48 },
-  { key: "jiangsu",   emoji: "🍲", count: 67 },
-  { key: "northwest", emoji: "🐏", count: 42 },
-  { key: "yunnan",    emoji: "🥬", count: 38 },
-  { key: "other",     emoji: "🍜", count: 156 },
+  { key: "sichuan",   emoji: "🌶️" },
+  { key: "cantonese", emoji: "🦐" },
+  { key: "northern",  emoji: "🥟" },
+  { key: "fujian",    emoji: "🌊" },
+  { key: "hunan",     emoji: "🌿" },
+  { key: "jiangsu",   emoji: "🍲" },
+  { key: "northwest", emoji: "🐏" },
+  { key: "yunnan",    emoji: "🥬" },
+  { key: "other",     emoji: "🍜" },
 ] as const;
 
-export default function CuisineGrid({ locale }: Props) {
+type Props = {
+  locale: string;
+  counts: Record<string, number>;
+};
+
+export default function CuisineGrid({ locale, counts }: Props) {
   const t = useTranslations("home");
   const tc = useTranslations("cuisine");
 
@@ -27,7 +30,7 @@ export default function CuisineGrid({ locale }: Props) {
       </h2>
 
       <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-9 gap-3">
-        {CUISINES.map(({ key, emoji, count }) => (
+        {CUISINES.map(({ key, emoji }) => (
           <Link
             key={key}
             href={`/${locale}/restaurants?cuisine=${key}`}
@@ -38,7 +41,9 @@ export default function CuisineGrid({ locale }: Props) {
             <span className="font-semibold text-xs leading-tight whitespace-nowrap">
               {tc(key)}
             </span>
-            <span className="text-xs opacity-60">{count}店</span>
+            <span className="text-xs opacity-60">
+              {counts[key] !== undefined ? `${counts[key]}店` : "-"}
+            </span>
           </Link>
         ))}
       </div>
