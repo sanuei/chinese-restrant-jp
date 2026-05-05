@@ -3,6 +3,21 @@ import Link from "next/link";
 
 export const dynamic = "force-dynamic";
 
+type RecentRestaurant = {
+  id: string;
+  name_zh: string | null;
+  name_original: string;
+  trusted_rating: number | null;
+  raw_rating: number | null;
+  authenticity: string | null;
+  last_synced_at: string | null;
+};
+
+type CuisineStat = {
+  cuisine_type: string;
+  count: number;
+};
+
 async function getStats() {
   const db = await getDb();
 
@@ -16,13 +31,13 @@ async function getStats() {
     db.prepare("SELECT COUNT(*) as count FROM restaurants WHERE is_active = 1 AND authenticity = 'japanese'").first<{ count: number }>(),
     db.prepare("SELECT COUNT(*) as count FROM restaurants WHERE is_active = 1 AND authenticity = 'unknown'").first<{ count: number }>(),
     db.prepare("SELECT AVG(trusted_rating) as avg FROM restaurants WHERE is_active = 1 AND trusted_rating > 0").first<{ avg: number }>(),
-    db.prepare("SELECT * FROM restaurants WHERE is_active = 1 ORDER BY last_synced_at DESC LIMIT 5").all<Record<string, unknown>>(),
+    db.prepare("SELECT id, name_zh, name_original, trusted_rating, raw_rating, authenticity, last_synced_at FROM restaurants WHERE is_active = 1 ORDER BY last_synced_at DESC LIMIT 5").all<RecentRestaurant>(),
     db.prepare("SELECT COUNT(*) as total, SUM(CASE WHEN credibility_action = 'remove' THEN 1 ELSE 0 END) as removed, SUM(CASE WHEN credibility_action = 'flag' THEN 1 ELSE 0 END) as flagged FROM reviews").first<{ total: number; removed: number; flagged: number }>(),
   ]);
 
   const cuisineResult = await db.prepare(
     "SELECT cuisine_type, COUNT(*) as count FROM restaurants WHERE is_active = 1 GROUP BY cuisine_type ORDER BY count DESC"
-  ).all<{ cuisine_type: string; count: number }>();
+  ).all<CuisineStat>();
   const cuisineRows = cuisineResult.results ?? [];
 
   return {
@@ -32,7 +47,7 @@ async function getStats() {
     japanese: japaneseRow?.count ?? 0,
     unknown: unknownRow?.count ?? 0,
     avgRating: avgRatingRow?.avg ?? 0,
-    recent: (recentRow as any)?.results ?? ([] as any),
+    recent: recentRow.results ?? [],
     cuisineStats: cuisineRows ?? [],
     reviewStats: reviewStatsRow ?? { total: 0, removed: 0, flagged: 0 },
   };
@@ -92,7 +107,7 @@ export default async function AdminDashboard() {
                 </tr>
               </thead>
               <tbody>
-                {stats.recent.map((r: any) => (
+                {stats.recent.map((r) => (
                   <tr key={r.id} className="border-b border-gray-50 last:border-0">
                     <td className="py-3 font-medium text-gray-900">{r.name_zh || r.name_original}</td>
                     <td className="py-3">
@@ -152,7 +167,7 @@ export default async function AdminDashboard() {
           <div className="bg-white rounded-xl shadow-sm p-6">
             <h2 className="text-lg font-bold text-gray-900 mb-4">菜系分布</h2>
             <div className="space-y-2">
-              {stats.cuisineStats.map((c: any) => (
+              {stats.cuisineStats.map((c) => (
                 <div key={c.cuisine_type} className="flex justify-between items-center text-sm">
                   <span className="text-gray-700 capitalize">{c.cuisine_type}</span>
                   <span className="text-gray-500">{c.count}</span>

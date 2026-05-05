@@ -12,7 +12,7 @@ interface MiniMaxMessage {
   content: string;
 }
 
-async function callMiniMax(messages: MiniMaxMessage[], temperature: number = 0.1) {
+async function callMiniMax<T = unknown>(messages: MiniMaxMessage[], temperature: number = 0.1): Promise<T> {
   const response = await fetch(`${API_BASE}/text/chatcompletion_v2`, {
     method: "POST",
     headers: {
@@ -38,22 +38,41 @@ async function callMiniMax(messages: MiniMaxMessage[], temperature: number = 0.1
     throw new Error(`MiniMax API unexpected response: ${JSON.stringify(data)}`);
   }
   
-  let content = data.choices[0].message.content;
+  let content = String(data.choices[0].message.content || "").trim();
   // 提取 markdown 中的 JSON 块
   const jsonMatch = content.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
   if (jsonMatch) {
-    content = jsonMatch[1];
+    content = jsonMatch[1].trim();
   } else {
-    // 粗暴清理可能未闭合的代码块
-    content = content.replace(/^```(?:json)?/i, '').replace(/```$/, '').trim();
-    if (!content.endsWith('}')) content += '}';
+    content = content.replace(/^```(?:json)?/i, "").replace(/```$/i, "").trim();
   }
-  
+
   try {
-    return JSON.parse(content);
-  } catch (e) {
+    return JSON.parse(content) as T;
+  } catch {
+    const objectStart = content.indexOf("{");
+    const objectEnd = content.lastIndexOf("}");
+    const arrayStart = content.indexOf("[");
+    const arrayEnd = content.lastIndexOf("]");
+    const canExtractObject = objectStart >= 0 && objectEnd > objectStart;
+    const canExtractArray = arrayStart >= 0 && arrayEnd > arrayStart;
+    const extracted =
+      canExtractObject && (!canExtractArray || objectStart < arrayStart)
+        ? content.slice(objectStart, objectEnd + 1)
+        : canExtractArray
+          ? content.slice(arrayStart, arrayEnd + 1)
+          : "";
+
+    if (extracted) {
+      try {
+        return JSON.parse(extracted) as T;
+      } catch {
+        // Fall through to the detailed error below.
+      }
+    }
+
     console.error("Failed to parse JSON:", content);
-    throw e;
+    throw new Error("MiniMax response was not valid JSON");
   }
 }
 
@@ -84,10 +103,89 @@ export async function analyzeReviewsCredibilityBatch(
     .map((r, i) => `[${i}] ${r.author_name} (★${r.rating}): ${r.text}`)
     .join('\n');
 
-  return callMiniMax([
+  return callMiniMax<ReviewCredibilityResult[]>([
     { role: "system", content: systemPrompt },
     { role: "user", content: userContent }
   ]);
+}
+
+export interface RestaurantAiReviewResult extends ReviewCredibilityResult {
+  index: number;
+}
+
+export interface RestaurantAiAnalysisResult {
+  cuisine_type: "sichuan" | "cantonese" | "northern" | "fujian" | "hunan" | "jiangsu" | "northwest" | "yunnan" | "other";
+  cuisine_confidence: number;
+  authenticity: "authentic" | "adapted" | "japanese" | "unknown";
+  authenticity_score: number;
+  authenticity_reason_zh: string;
+  authenticity_reason_ja: string;
+  ai_summary_zh: string;
+  ai_summary_ja: string;
+  reviews: RestaurantAiReviewResult[];
+}
+
+export async function analyzeRestaurantSnapshot(input: {
+  restaurantName: string;
+  address: string;
+  rating: number;
+  reviewCount: number;
+  priceLevel?: number | null;
+  reviews: { text: string; rating: number; author_name: string; language?: string }[];
+}): Promise<RestaurantAiAnalysisResult> {
+  const systemPrompt = `你是“ガチ中華ナビ”的餐厅数据分析专家，熟悉中国各地菜系、日本中華、在日华人餐饮语境和虚假评论识别。
+
+请把同一家餐厅的所有 AI 任务合并完成：
+1. 判断菜系。
+2. 判断正宗度。
+3. 生成中文和日文短摘要。
+4. 判断每条 Google 评论的可信度。
+
+菜系 cuisine_type 只能是以下之一：
+sichuan(川菜), cantonese(粤菜), northern(北方菜), fujian(闽菜), hunan(湘菜), jiangsu(苏浙菜), northwest(西北菜), yunnan(云贵菜), other(综合/其他)。
+
+正宗度 authenticity 只能是：
+authentic(正宗中国味), adapted(改良中国味), japanese(日式中华), unknown(无法确定)。
+
+评论可信度 action 只能是 keep、flag、remove。
+评论如果空泛、刷评感强、只有情绪化赞美或攻击，降低可信度；如果提到具体菜品、口味、排队、服务、价格、环境，或优缺点并存，提高可信度。
+
+返回严格 JSON，不要 markdown，不要解释。格式：
+{
+  "cuisine_type": "...",
+  "cuisine_confidence": 0-100,
+  "authenticity": "...",
+  "authenticity_score": 0-100,
+  "authenticity_reason_zh": "中文理由，1-2句",
+  "authenticity_reason_ja": "日本語理由、1-2文",
+  "ai_summary_zh": "中文综合印象，30字以内",
+  "ai_summary_ja": "日本語の総評、40字以内",
+  "reviews": [
+    {"index": 0, "credibility_score": 0-100, "credibility_action": "keep|flag|remove", "credibility_reason": "简短理由"}
+  ]
+}`;
+
+  const reviewsText = input.reviews.length
+    ? input.reviews
+        .map((review, index) => {
+          const language = review.language ? ` lang=${review.language}` : "";
+          return `[${index}] ${review.author_name}${language} ★${review.rating}\n${review.text}`;
+        })
+        .join("\n---\n")
+    : "暂无 Google 评论正文。";
+
+  const userContent = `餐厅名: ${input.restaurantName}
+地址: ${input.address}
+Google评分: ${input.rating}
+Google评论总数: ${input.reviewCount}
+价格等级: ${input.priceLevel ?? "unknown"}
+Google评论（最多5条）:
+${reviewsText}`;
+
+  return callMiniMax<RestaurantAiAnalysisResult>([
+    { role: "system", content: systemPrompt },
+    { role: "user", content: userContent },
+  ], 0.2);
 }
 
 // 2. 菜系分类与正宗度判断

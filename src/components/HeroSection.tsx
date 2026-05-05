@@ -4,6 +4,7 @@ import { useTranslations } from "next-intl";
 import { Search } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import Link from "next/link";
 
 type Props = { locale: string };
 
@@ -59,10 +60,10 @@ export default function HeroSection({ locale }: Props) {
 
         {/* 搜索框 */}
         <form onSubmit={handleSearch} className="flex gap-3 max-w-2xl mx-auto mb-10">
-          <div className="relative flex-1">
+          <div className="relative flex-1 min-w-0">
             <Search
               size={18}
-              className="absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none"
+              className="absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none z-10"
               style={{ color: "var(--color-ink-400)" }}
             />
             <input
@@ -70,13 +71,32 @@ export default function HeroSection({ locale }: Props) {
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder={t("search_placeholder")}
-              className="search-input pl-12"
+              className="search-input search-input-with-icon"
             />
           </div>
           <button type="submit" className="btn-primary shrink-0">
             {t("search_btn")}
           </button>
         </form>
+
+        <Link
+          href={`/${locale}/verify`}
+          className="mx-auto mb-8 flex max-w-xl items-center justify-between gap-3 rounded-xl border border-vermilion-100 bg-white/80 px-4 py-3 text-left shadow-sm transition-colors hover:border-vermilion-200 hover:bg-white"
+        >
+          <span>
+            <span className="block text-sm font-bold text-vermilion-700">
+              {locale === "zh" ? "ガチ中華鉴定所" : "ガチ中華鑑定所"}
+            </span>
+            <span className="block text-xs text-ink-400">
+              {locale === "zh"
+                ? "粘贴 Google Maps 链接，让 AI 判断这家店正不正。"
+                : "Google Maps リンクを貼って、AI がガチ度を判定。"}
+            </span>
+          </span>
+          <span className="shrink-0 rounded-md bg-vermilion-700 px-3 py-1.5 text-xs font-bold text-white">
+            {locale === "zh" ? "去鉴定" : "鑑定へ"}
+          </span>
+        </Link>
 
         {/* 认证说明 */}
         <div className="flex flex-wrap items-center justify-center gap-3">

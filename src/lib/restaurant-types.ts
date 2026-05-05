@@ -100,7 +100,11 @@ export function parsePhotoReferences(photos: string | null | undefined): string[
 
   try {
     const parsed: unknown = JSON.parse(photos);
-    return Array.isArray(parsed) ? parsed.filter((item): item is string => typeof item === "string") : [];
+    if (!Array.isArray(parsed)) return [];
+
+    // 完整 URL（lh3.googleusercontent.com）直接返回
+    // photo_reference（Ab43m-...）也直接返回，由调用方决定如何拼接
+    return parsed.filter((item): item is string => typeof item === "string");
   } catch {
     return [];
   }

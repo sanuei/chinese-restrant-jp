@@ -22,6 +22,9 @@
  *
  *   # Phase 2: 只同步前 10 家
  *   SYNC_LIMIT=10 node scripts/batch-collect.mjs --phase=sync
+ *
+ *   # Phase 3: 刷新数据库里已有餐厅（重新拉 Google 照片/5条评论/AI）
+ *   SYNC_LIMIT=20 node scripts/batch-collect.mjs --phase=refresh
  */
 
 import dotenv from "dotenv";
@@ -43,16 +46,32 @@ const ADMIN_SECRET = process.env.ADMIN_SECRET;
 const SYNC_API_BASE = process.env.SYNC_API_BASE || "http://localhost:3000";
 const FORCE = process.env.FORCE === "1";
 const MIN_RATING = Number(process.env.COLLECT_MIN_RATING || 4.0);
-const LIMIT = Number(process.env.COLLECT_LIMIT || 20);
+const MIN_REVIEWS = Number(process.env.COLLECT_MIN_REVIEWS || 50);
+const LIMIT = Number(process.env.COLLECT_LIMIT || 100);
 const SYNC_DELAY = Number(process.env.SYNC_DELAY || 3000);
 const SYNC_LIMIT = Number(process.env.SYNC_LIMIT || 0);
+const RESYNC = process.env.RESYNC === "1";
+const REQUIRE_TOKYO = process.env.COLLECT_REQUIRE_TOKYO !== "0";
+const RESET_CANDIDATES = process.env.RESET_CANDIDATES === "1";
 
-const AREAS = (process.env.AREAS || "池袋,上野,新宿,高田馬場,秋葉原,神田")
-  .split(",")
-  .map((s) => s.trim())
-  .filter(Boolean);
+const TOKYO_23_AREAS = [
+  "千代田区", "中央区", "港区", "新宿区", "文京区", "台東区", "墨田区", "江東区",
+  "品川区", "目黒区", "大田区", "世田谷区", "渋谷区", "中野区", "杉並区", "豊島区",
+  "北区", "荒川区", "板橋区", "練馬区", "足立区", "葛飾区", "江戸川区",
+];
 
-const KEYWORDS = (process.env.KEYWORDS || "川菜,湘菜,四川料理,湖南料理,本格中華,ガチ中華,餃子,新疆料理,雲南料理")
+function parseAreas() {
+  const raw = process.env.AREAS || "tokyo23";
+  if (raw.toLowerCase() === "tokyo23") return TOKYO_23_AREAS;
+  return raw
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
+
+const AREAS = parseAreas();
+
+const KEYWORDS = (process.env.KEYWORDS || "湖南料理,湘菜,四川料理,川菜,重慶火鍋,麻辣湯,中国火鍋,中国東北料理,東北菜,延辺料理,新疆料理,蘭州牛肉麺,雲南料理,本格中華,ガチ中華")
   .split(",")
   .map((s) => s.trim())
   .filter(Boolean);
@@ -122,7 +141,11 @@ async function searchGoogle(query) {
 
 function addCandidate(map, result, query, area, keyword) {
   if (!result.place_id) return;
-  if ((result.rating || 0) < MIN_RATING) return;
+  if (!isEligibleCandidate({
+    rating: result.rating || 0,
+    reviewCount: result.user_ratings_total || 0,
+    address: result.formatted_address || "",
+  })) return;
 
   const key = result.place_id;
   const source = `${area}/${keyword}`;
@@ -153,6 +176,13 @@ function addCandidate(map, result, query, area, keyword) {
   });
 }
 
+function isEligibleCandidate(candidate) {
+  if ((candidate.rating || 0) < MIN_RATING) return false;
+  if ((candidate.reviewCount || 0) < MIN_REVIEWS) return false;
+  if (REQUIRE_TOKYO && !(candidate.address || "").includes("東京都")) return false;
+  return true;
+}
+
 async function phaseCollect() {
   assertEnv("GOOGLE_MAPS_API_KEY");
   ensureDataDir();
@@ -160,10 +190,10 @@ async function phaseCollect() {
   log(`Phase 1: Collect`);
   log(`areas=${AREAS.join(" / ")}`);
   log(`keywords=${KEYWORDS.join(" / ")}`);
-  log(`minRating=${MIN_RATING} limit=${LIMIT}`);
+  log(`minRating=${MIN_RATING} minReviews=${MIN_REVIEWS} requireTokyo=${REQUIRE_TOKYO} limit=${LIMIT}`);
 
-  // 合并已有数据
-  const existing = new Map(loadCandidates().map((c) => [c.placeId, c]));
+  // 合并已有数据；RESET_CANDIDATES=1 时重建候选池，避免旧关键词污染。
+  const existing = RESET_CANDIDATES ? new Map() : new Map(loadCandidates().map((c) => [c.placeId, c]));
 
   const fresh = new Map();
   let searchCount = 0;
@@ -198,7 +228,7 @@ async function phaseCollect() {
     }
   }
 
-  const all = [...existing.values()];
+  const all = [...existing.values()].filter(isEligibleCandidate);
 
   // 按评分+评论数排序，取前 LIMIT
   const selected = all
@@ -243,15 +273,49 @@ async function syncCandidate(candidate) {
   return JSON.parse(text);
 }
 
+async function fetchExistingRestaurants() {
+  assertEnv("ADMIN_SECRET");
+
+  const restaurants = [];
+  let page = 1;
+  const pageSize = 100;
+
+  while (true) {
+    const url = new URL(`${SYNC_API_BASE}/api/admin/restaurants`);
+    url.searchParams.set("page", String(page));
+    url.searchParams.set("pageSize", String(pageSize));
+    url.searchParams.set("sort", "newest");
+
+    const res = await fetch(url, {
+      headers: { Authorization: `Bearer ${ADMIN_SECRET}` },
+    });
+    const text = await res.text();
+    if (!res.ok) {
+      throw new Error(`Fetch existing restaurants ${res.status}: ${text}`);
+    }
+
+    const payload = JSON.parse(text);
+    restaurants.push(...(payload.data || []));
+
+    const pagination = payload.pagination || {};
+    if (!pagination.totalPages || page >= pagination.totalPages) break;
+    page++;
+  }
+
+  return restaurants;
+}
+
 async function phaseSync() {
   assertEnv("ADMIN_SECRET");
 
   const candidates = loadCandidates();
   const results = loadResults();
-  const resultsMap = new Map(results.map((r) => [r.placeId, r]));
+  const successfulIds = new Set(results.filter((r) => r.ok).map((r) => r.placeId));
 
   // 过滤未同步的
-  const pending = candidates.filter((c) => !c.synced && !resultsMap.has(c.placeId));
+  const pending = candidates
+    .filter((c) => RESYNC || (!c.synced && !successfulIds.has(c.placeId)))
+    .sort((a, b) => b.rating - a.rating || b.reviewCount - a.reviewCount);
 
   if (pending.length === 0) {
     log("No pending candidates to sync.");
@@ -281,7 +345,6 @@ async function phaseSync() {
         payload,
       };
       newResults.push(entry);
-      resultsMap.set(c.placeId, entry);
       // 标记 candidates 中该条为已同步
       c.synced = true;
       c.syncAt = entry.syncedAt;
@@ -295,7 +358,6 @@ async function phaseSync() {
         error: err.message,
       };
       newResults.push(entry);
-      resultsMap.set(c.placeId, entry);
       c.synced = false;
       c.syncError = err.message;
       log(`[${index}/${toSync.length}] ✗ ${c.name}: ${err.message}`);
@@ -316,17 +378,86 @@ async function phaseSync() {
   log(`Results: ${RESULTS_FILE}`);
 }
 
+async function phaseRefresh() {
+  assertEnv("ADMIN_SECRET");
+
+  const restaurants = await fetchExistingRestaurants();
+  const toRefresh = (SYNC_LIMIT > 0 ? restaurants.slice(0, SYNC_LIMIT) : restaurants)
+    .filter((restaurant) => restaurant.id);
+
+  if (toRefresh.length === 0) {
+    log("No existing restaurants to refresh.");
+    return;
+  }
+
+  log(`Phase 3: Refresh existing restaurants`);
+  log(`total existing=${restaurants.length} will refresh=${toRefresh.length} delay=${SYNC_DELAY}ms`);
+
+  const results = loadResults();
+  const newResults = [...results];
+
+  for (let i = 0; i < toRefresh.length; i++) {
+    const restaurant = toRefresh[i];
+    const start = Date.now();
+    const name = restaurant.name_original || restaurant.name_zh || restaurant.id;
+
+    try {
+      const payload = await syncCandidate({ placeId: restaurant.id });
+      const entry = {
+        placeId: restaurant.id,
+        name,
+        syncedAt: new Date().toISOString(),
+        ok: true,
+        phase: "refresh",
+        payload,
+      };
+      newResults.push(entry);
+      log(`[${i + 1}/${toRefresh.length}] ✓ refreshed ${name} (${(Date.now() - start) / 1000}s)`);
+    } catch (err) {
+      const entry = {
+        placeId: restaurant.id,
+        name,
+        syncedAt: new Date().toISOString(),
+        ok: false,
+        phase: "refresh",
+        error: err.message,
+      };
+      newResults.push(entry);
+      log(`[${i + 1}/${toRefresh.length}] ✗ refresh ${name}: ${err.message}`);
+    }
+
+    saveResults(newResults);
+
+    if (i < toRefresh.length - 1) {
+      log(`  waiting ${SYNC_DELAY}ms...`);
+      await sleep(SYNC_DELAY);
+    }
+  }
+
+  const refreshOk = newResults.filter((r) => r.phase === "refresh" && r.ok).length;
+  log(`\nDone. refresh ok entries=${refreshOk}`);
+}
+
 // ─── Main ──────────────────────────────────────────────────────────────────
 
-const PHASE = process.argv.includes("--phase=sync") ? "sync" : "collect";
+const PHASE = process.argv.includes("--phase=sync")
+  ? "sync"
+  : process.argv.includes("--phase=refresh")
+    ? "refresh"
+    : "collect";
 
 if (PHASE === "collect") {
   phaseCollect().catch((err) => {
     console.error(err);
     process.exit(1);
   });
-} else {
+} else if (PHASE === "sync") {
   phaseSync().catch((err) => {
+    console.error(err);
+    process.exit(1);
+  });
+} else {
+  phaseRefresh().catch((err) => {
     console.error(err);
     process.exit(1);
   });

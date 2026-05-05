@@ -57,8 +57,11 @@ export default async function RestaurantDetailPage({
   const authenticity = normalizeAuthenticity(restaurant.authenticity);
   const cuisineType = normalizeCuisineType(restaurant.cuisine_type);
   
-  const photos = parsePhotoReferences(restaurant.photos).slice(0, 5).map((ref) =>
-    `https://maps.googleapis.com/maps/api/place/photo?maxwidth=800&photo_reference=${ref}&key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}`
+  const rawPhotos = parsePhotoReferences(restaurant.photos).slice(0, 5);
+  const photos = rawPhotos.map((ref) =>
+    ref.startsWith("http")
+      ? ref
+      : `https://maps.googleapis.com/maps/api/place/photo?maxwidth=800&photo_reference=${ref}&key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}`
   );
 
   return (

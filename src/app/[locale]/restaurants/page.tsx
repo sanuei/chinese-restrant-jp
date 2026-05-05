@@ -180,12 +180,12 @@ export default async function RestaurantsPage({
         <form action={`/${locale}/restaurants`} className="bg-white border border-warm-200 rounded-xl shadow-sm p-4">
           <div className="grid grid-cols-1 md:grid-cols-[1.4fr_1fr_1fr] xl:grid-cols-[1.5fr_1fr_1fr_1fr_1fr_auto] gap-3">
             <label className="relative">
-              <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-400 pointer-events-none" />
+              <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-400 pointer-events-none z-10" />
               <input
                 name="q"
                 defaultValue={q}
                 placeholder={copy.search}
-                className="search-input pl-10 py-2.5 text-sm rounded-md"
+                className="search-input search-input-compact search-input-with-icon"
               />
             </label>
 
@@ -251,7 +251,10 @@ export default async function RestaurantsPage({
             let photoUrl = "https://images.unsplash.com/photo-1563245372-f21724e3856d?q=80&w=600&auto=format&fit=crop"; // fallback
             const photos = parsePhotoReferences(restaurant.photos);
             if (photos.length > 0) {
-              photoUrl = `https://maps.googleapis.com/maps/api/place/photo?maxwidth=800&photo_reference=${photos[0]}&key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}`;
+              const first = photos[0];
+              photoUrl = first.startsWith("http")
+                ? first
+                : `https://maps.googleapis.com/maps/api/place/photo?maxwidth=800&photo_reference=${first}&key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}`;
             }
 
             return (

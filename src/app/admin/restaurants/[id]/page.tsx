@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 
 const CUISINES = ["sichuan","cantonese","northern","fujian","hunan","jiangsu","northwest","yunnan","other"];
-const AUTHENTICITIES = ["authentic","adapted","japanese","unknown"];
 const CUISINE_LABELS: Record<string, string> = {
   sichuan: "川菜", cantonese: "粤菜", northern: "北方菜", fujian: "闽菜",
   hunan: "湘菜", jiangsu: "苏菜", northwest: "西北菜", yunnan: "云南菜", other: "其他",
@@ -13,6 +12,7 @@ const CUISINE_LABELS: Record<string, string> = {
 
 interface Review {
   id: string; author_name: string; rating: number; text: string;
+  language: string | null;
   published_at: string; credibility_score: number; credibility_action: string;
   credibility_reason: string; source: string; helpful_count: number;
 }
@@ -104,7 +104,7 @@ export default function EditRestaurantPage({ params }: { params: Promise<{ id: s
   }, [router]);
 
   useEffect(() => {
-    if (id) fetchData(id);
+    if (id) void Promise.resolve().then(() => fetchData(id));
   }, [id, fetchData]);
 
   const handleSave = async () => {
@@ -155,7 +155,7 @@ export default function EditRestaurantPage({ params }: { params: Promise<{ id: s
         const err = await res.json();
         setMessage({ type: "error", text: err.error || "保存失败" });
       }
-    } catch (e) {
+    } catch {
       setMessage({ type: "error", text: "保存失败" });
     } finally {
       setSaving(false);
@@ -447,6 +447,9 @@ export default function EditRestaurantPage({ params }: { params: Promise<{ id: s
                     </span>
                     <span className="text-xs text-gray-400">
                       {review.published_at ? new Date(review.published_at).toLocaleDateString("zh-CN") : ""}
+                    </span>
+                    <span className="text-xs px-1.5 py-0.5 rounded bg-gray-100 text-gray-500">
+                      {review.language || "und"}
                     </span>
                   </div>
                   <p className="text-sm text-gray-700 line-clamp-3">{review.text}</p>

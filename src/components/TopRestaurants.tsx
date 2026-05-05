@@ -65,7 +65,14 @@ export default async function TopRestaurants({ locale }: { locale: string }) {
           let photoUrl = "https://images.unsplash.com/photo-1563245372-f21724e3856d?q=80&w=600&auto=format&fit=crop";
           const photos = parsePhotoReferences(restaurant.photos);
           if (photos.length > 0) {
-            photoUrl = `https://maps.googleapis.com/maps/api/place/photo?maxwidth=600&photo_reference=${photos[0]}&key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}`;
+            const first = photos[0];
+            if (first.startsWith("http")) {
+              // 完整 URL 直接用
+              photoUrl = first;
+            } else {
+              // photo_reference 走 Google API 拼接
+              photoUrl = `https://maps.googleapis.com/maps/api/place/photo?maxwidth=600&photo_reference=${first}&key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}`;
+            }
           }
 
           return (

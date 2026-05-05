@@ -26,6 +26,7 @@ export default function Navbar({ locale }: Props) {
   const navLinks = [
     { href: `/${locale}`, label: t("home") },
     { href: `/${locale}/restaurants`, label: t("restaurants") },
+    { href: `/${locale}/verify`, label: t("verify") },
     { href: `/${locale}/cuisines`, label: t("cuisines") },
     { href: `/${locale}/map`, label: t("map") },
     { href: `/${locale}/about`, label: t("about") },

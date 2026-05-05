@@ -7,6 +7,10 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "collect:tokyo23": "node scripts/batch-collect.mjs --phase=collect",
+    "collect:sync": "node scripts/batch-collect.mjs --phase=sync",
+    "collect:refresh": "node scripts/batch-collect.mjs --phase=refresh",
+    "collect:admin": "node scripts/interactive-collect.mjs",
     "cf:build": "opennextjs-cloudflare build",
     "cf:preview": "opennextjs-cloudflare preview",
     "deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy"

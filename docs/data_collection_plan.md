@@ -32,6 +32,23 @@
 
 ## 执行方式
 
+后台页面：
+
+```text
+http://localhost:3000/admin/collect
+```
+
+推荐流程：先点“搜索候选”，检查候选是否跑偏；再调整“每次同步”为 10-20，点“同步选中”。如果只是更新已有餐厅，点“刷新已有”。
+
+命令行批量工具：
+
+```bash
+npm run collect:tokyo23
+FORCE=1 RESET_CANDIDATES=1 COLLECT_LIMIT=120 npm run collect:tokyo23
+SYNC_LIMIT=20 npm run collect:sync
+SYNC_LIMIT=20 npm run collect:refresh
+```
+
 先预览候选，不写库：
 
 ```bash

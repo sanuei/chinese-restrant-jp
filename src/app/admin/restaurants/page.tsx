@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { Suspense, useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
+import { AlertCircle, CheckCircle2, Loader2, RefreshCw } from "lucide-react";
 
 const CUISINES = ["sichuan","cantonese","northern","fujian","hunan","jiangsu","northwest","yunnan","other"];
 const AUTHENTICITIES = ["authentic","adapted","japanese","unknown"];
@@ -31,19 +32,33 @@ interface Restaurant {
   last_synced_at: string; is_active: number;
 }
 
-export default function AdminRestaurantsPage() {
+type RowUpdateStatus = {
+  state: "updating" | "success" | "error";
+  message: string;
+};
+
+function AdminRestaurantsContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
   const [data, setData] = useState<Restaurant[]>([]);
   const [pagination, setPagination] = useState({ page: 1, pageSize: 20, total: 0, totalPages: 0 });
   const [loading, setLoading] = useState(false);
+  const [rowUpdates, setRowUpdates] = useState<Record<string, RowUpdateStatus>>({});
 
   const [q, setQ] = useState(searchParams.get("q") || "");
   const [cuisine, setCuisine] = useState(searchParams.get("cuisine") || "");
   const [auth, setAuth] = useState(searchParams.get("authenticity") || "");
   const [sort, setSort] = useState(searchParams.get("sort") || "trusted_rating");
   const [page, setPage] = useState(parseInt(searchParams.get("page") || "1", 10));
+
+  const buildListParams = useCallback(() => {
+    const params: Record<string, string> = { sort, page: String(page), pageSize: "20" };
+    if (q) params.q = q;
+    if (cuisine) params.cuisine = cuisine;
+    if (auth) params.authenticity = auth;
+    return params;
+  }, [auth, cuisine, page, q, sort]);
 
   const fetchData = useCallback(async (params: Record<string, string>) => {
     setLoading(true);
@@ -64,12 +79,8 @@ export default function AdminRestaurantsPage() {
   }, []);
 
   useEffect(() => {
-    const params: Record<string, string> = { sort, page: String(page), pageSize: "20" };
-    if (q) params.q = q;
-    if (cuisine) params.cuisine = cuisine;
-    if (auth) params.authenticity = auth;
-    fetchData(params);
-  }, [q, cuisine, auth, sort, page, fetchData]);
+    void Promise.resolve().then(() => fetchData(buildListParams()));
+  }, [buildListParams, fetchData]);
 
   const applyFilters = () => {
     setPage(1);
@@ -94,6 +105,51 @@ export default function AdminRestaurantsPage() {
     });
     if (res.ok) { setData(prev => prev.filter(r => r.id !== id)); }
     else { alert("删除失败"); }
+  };
+
+  const handleUpdate = async (restaurant: Restaurant) => {
+    setRowUpdates((prev) => ({
+      ...prev,
+      [restaurant.id]: { state: "updating", message: "正在更新 Google 信息、评论和 AI 分析" },
+    }));
+
+    try {
+      const res = await fetch("/api/admin/sync", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${process.env.NEXT_PUBLIC_ADMIN_TOKEN}`,
+        },
+        body: JSON.stringify({ place_id: restaurant.id }),
+      });
+      const text = await res.text();
+
+      if (!res.ok) {
+        throw new Error(`${res.status}: ${text.slice(0, 160)}`);
+      }
+
+      let reviewsCount = "-";
+      try {
+        const payload = JSON.parse(text);
+        reviewsCount = String(payload.reviews_count ?? "-");
+      } catch {
+        reviewsCount = "-";
+      }
+
+      setRowUpdates((prev) => ({
+        ...prev,
+        [restaurant.id]: { state: "success", message: `已更新，评论 ${reviewsCount} 条` },
+      }));
+      await fetchData(buildListParams());
+    } catch (error) {
+      setRowUpdates((prev) => ({
+        ...prev,
+        [restaurant.id]: {
+          state: "error",
+          message: error instanceof Error ? error.message : "更新失败",
+        },
+      }));
+    }
   };
 
   const pageNumbers = () => {
@@ -184,8 +240,14 @@ export default function AdminRestaurantsPage() {
                 </tr>
               </thead>
               <tbody>
-                {data.map((r) => (
-                  <tr key={r.id} className="border-b border-gray-50 hover:bg-gray-50">
+                {data.map((r) => {
+                  const updateStatus = rowUpdates[r.id];
+                  const updating = updateStatus?.state === "updating";
+                  return (
+                  <tr key={r.id} className={`border-b border-gray-50 hover:bg-gray-50 ${
+                    updateStatus?.state === "success" ? "bg-green-50/40" :
+                    updateStatus?.state === "error" ? "bg-red-50/40" : ""
+                  }`}>
                     <td className="px-4 py-3">
                       <div className="font-medium text-gray-900">{r.name_zh || r.name_original}</div>
                       <div className="text-xs text-gray-400">{r.ward || r.city}</div>
@@ -216,12 +278,38 @@ export default function AdminRestaurantsPage() {
                     </td>
                     <td className="px-4 py-3 text-center">
                       <div className="flex items-center justify-center gap-2">
+                        <button
+                          onClick={() => handleUpdate(r)}
+                          disabled={updating || loading}
+                          className={`inline-flex min-w-[64px] items-center justify-center gap-1 rounded-md border px-2.5 py-1.5 text-xs font-medium transition-colors disabled:opacity-60 ${
+                            updateStatus?.state === "success" ? "border-green-200 bg-green-50 text-green-700" :
+                            updateStatus?.state === "error" ? "border-red-200 bg-red-50 text-red-700" :
+                            "border-warm-200 bg-white text-gray-700 hover:bg-warm-50"
+                          }`}
+                          title="重新拉取 Google 详情、最新评论和 AI 分析"
+                        >
+                          {updating ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> :
+                            updateStatus?.state === "success" ? <CheckCircle2 className="h-3.5 w-3.5" /> :
+                            updateStatus?.state === "error" ? <AlertCircle className="h-3.5 w-3.5" /> :
+                            <RefreshCw className="h-3.5 w-3.5" />}
+                          {updating ? "更新中" : "更新"}
+                        </button>
                         <Link href={`/admin/restaurants/${r.id}`} className="text-blue-600 hover:underline text-xs">编辑</Link>
                         <button onClick={() => handleDelete(r.id, r.name_zh || r.name_original)} className="text-red-500 hover:underline text-xs">删除</button>
                       </div>
+                      {updateStatus && (
+                        <div className={`mt-1 text-xs ${
+                          updateStatus.state === "success" ? "text-green-700" :
+                          updateStatus.state === "error" ? "text-red-600" :
+                          "text-gray-400"
+                        }`}>
+                          {updateStatus.message}
+                        </div>
+                      )}
                     </td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -248,5 +336,13 @@ export default function AdminRestaurantsPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function AdminRestaurantsPage() {
+  return (
+    <Suspense fallback={<div className="p-12 text-center text-gray-400">加载中...</div>}>
+      <AdminRestaurantsContent />
+    </Suspense>
   );
 }
