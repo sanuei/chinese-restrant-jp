@@ -1,4 +1,4 @@
-import { textSearchPlaces } from "@/lib/google-maps";
+import { nearbySearchPlaces, textSearchPlaces, type GooglePlaceResult } from "@/lib/google-maps";
 
 type ResolvedMapsInput = {
   placeId: string;
@@ -14,7 +14,8 @@ function isPlaceId(value: string): boolean {
 
 function normalizeGoogleMapsUrl(input: string): URL | null {
   try {
-    const url = new URL(input);
+    const withProtocol = /^https?:\/\//i.test(input) ? input : `https://${input}`;
+    const url = new URL(withProtocol);
     if (!GOOGLE_MAPS_HOST_RE.test(url.hostname) && !url.hostname.includes("maps.app.goo.gl")) {
       return null;
     }
@@ -40,6 +41,11 @@ function extractPlaceId(url: URL): string | null {
 }
 
 function extractCoordinates(value: string): { lat: number; lng: number } | null {
+  const exactPlaceMatch = value.match(/!3d(-?\d+(?:\.\d+)?)!4d(-?\d+(?:\.\d+)?)/);
+  if (exactPlaceMatch) {
+    return { lat: Number(exactPlaceMatch[1]), lng: Number(exactPlaceMatch[2]) };
+  }
+
   const match = value.match(/@(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/);
   if (!match) return null;
   return { lat: Number(match[1]), lng: Number(match[2]) };
@@ -53,6 +59,51 @@ function extractQueryFromUrl(url: URL): string {
   if (!placeMatch) return "";
 
   return placeMatch[1].replace(/\+/g, " ").trim();
+}
+
+function normalizePlaceName(value: string): string {
+  return value
+    .toLowerCase()
+    .normalize("NFKC")
+    .replace(/[^\p{Letter}\p{Number}]+/gu, "");
+}
+
+function distanceMeters(a: { lat: number; lng: number }, b: { lat: number; lng: number }): number {
+  const earthRadius = 6371000;
+  const toRad = (value: number) => value * Math.PI / 180;
+  const dLat = toRad(b.lat - a.lat);
+  const dLng = toRad(b.lng - a.lng);
+  const lat1 = toRad(a.lat);
+  const lat2 = toRad(b.lat);
+  const h = Math.sin(dLat / 2) ** 2
+    + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2;
+  return 2 * earthRadius * Math.asin(Math.sqrt(h));
+}
+
+function pickBestPlace(
+  places: GooglePlaceResult[],
+  query: string,
+  coordinates: { lat: number; lng: number } | null
+): GooglePlaceResult | null {
+  const normalizedQuery = normalizePlaceName(query);
+
+  return places
+    .filter((place) => place.place_id)
+    .map((place) => {
+      let score = 0;
+      const normalizedName = normalizePlaceName(place.name || "");
+      if (normalizedQuery && normalizedName) {
+        if (normalizedName === normalizedQuery) score += 120;
+        else if (normalizedName.includes(normalizedQuery) || normalizedQuery.includes(normalizedName)) score += 80;
+      }
+      if (coordinates && place.geometry?.location) {
+        const distance = distanceMeters(coordinates, place.geometry.location);
+        score += Math.max(0, 80 - distance);
+      }
+      score += place.rating ? place.rating : 0;
+      return { place, score };
+    })
+    .sort((a, b) => b.score - a.score)[0]?.place ?? null;
 }
 
 export async function resolveGoogleMapsInput(input: string): Promise<ResolvedMapsInput> {
@@ -80,10 +131,21 @@ export async function resolveGoogleMapsInput(input: string): Promise<ResolvedMap
   }
 
   const coordinates = extractCoordinates(resolvedUrl.toString());
-  const results = await textSearchPlaces(query, coordinates ? { ...coordinates, radius: 300 } : {});
-  const best = results.find((result) => result.place_id) || null;
+  const textResults = await textSearchPlaces(query, coordinates ? { ...coordinates, radius: 500 } : {});
+  let best = pickBestPlace(textResults, query, coordinates);
+
+  if (!best && coordinates) {
+    const nearbyWithKeyword = await nearbySearchPlaces({ ...coordinates, radius: 150, keyword: query });
+    best = pickBestPlace(nearbyWithKeyword, query, coordinates);
+  }
+
+  if (!best && coordinates) {
+    const nearby = await nearbySearchPlaces({ ...coordinates, radius: 80 });
+    best = pickBestPlace(nearby, query, coordinates);
+  }
+
   if (!best?.place_id) {
-    throw new Error("Google Maps 没有找到对应餐厅，请换完整店铺链接再试");
+    throw new Error("Google Maps 没有找到对应餐厅。请确认链接是餐厅店铺页，或直接粘贴 Google place_id");
   }
 
   return {

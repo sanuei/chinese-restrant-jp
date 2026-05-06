@@ -16,6 +16,7 @@ import {
   type CuisineType,
   type RestaurantRow,
 } from "@/lib/restaurant-types";
+import { buildRestaurantSearchClause } from "@/lib/restaurant-search";
 
 export const dynamic = "force-dynamic";
 
@@ -48,6 +49,17 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale } = await params;
   return {
     title: locale === "zh" ? "地图找餐厅" : "マップで探す",
+    description: locale === "zh"
+      ? "在地图上浏览东京和关东ガチ中華，按菜系、评分和正宗度筛选附近中餐厅。"
+      : "地図で東京・関東のガチ中華を表示し、ジャンルや信頼スコアで絞り込めます。",
+    alternates: {
+      canonical: `/${locale}/map`,
+      languages: {
+        zh: "/zh/map",
+        ja: "/ja/map",
+        "x-default": "/zh/map",
+      },
+    },
   };
 }
 
@@ -67,9 +79,11 @@ export default async function MapPage({ params, searchParams }: Props) {
   const binds: SqlBind[] = [];
 
   if (q) {
-    sql += ` AND (name_zh LIKE ? OR name_ja LIKE ? OR name_original LIKE ? OR address LIKE ? OR ward LIKE ?)`;
-    const likeQ = `%${q}%`;
-    binds.push(likeQ, likeQ, likeQ, likeQ, likeQ);
+    const searchClause = buildRestaurantSearchClause(q);
+    if (searchClause) {
+      sql += ` AND ${searchClause.condition}`;
+      binds.push(...searchClause.binds);
+    }
   }
 
   if (cuisine) {

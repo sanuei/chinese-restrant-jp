@@ -8,8 +8,16 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return {
     title: locale === "zh" ? "ガチ中華鉴定所" : "ガチ中華鑑定所",
     description: locale === "zh"
-      ? "粘贴 Google Maps 链接，让 AI 判断一家店是不是ガチ中華。"
-      : "Google Maps のリンクから、AI がガチ中華かどうかを判定します。",
+      ? "粘贴 Google Maps 店铺链接，AI 会读取餐厅信息和最新评论，判断它是不是值得收录的关东ガチ中華。"
+      : "Google Maps の店舗リンクから、AI が関東エリアのガチ中華として掲載できるかを判定します。",
+    alternates: {
+      canonical: `/${locale}/verify`,
+      languages: {
+        zh: "/zh/verify",
+        ja: "/ja/verify",
+        "x-default": "/zh/verify",
+      },
+    },
   };
 }
 

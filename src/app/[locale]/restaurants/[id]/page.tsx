@@ -1,4 +1,5 @@
 import { getDb } from "@/lib/cloudflare";
+import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import { notFound } from "next/navigation";
 import Link from "next/link";
@@ -17,11 +18,39 @@ import {
 
 export const dynamic = "force-dynamic";
 
-export default async function RestaurantDetailPage({
-  params,
-}: {
-  params: Promise<{ locale: string; id: string }>;
-}) {
+type Props = { params: Promise<{ locale: string; id: string }> };
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { locale, id } = await params;
+  try {
+    const db = await getDb();
+    const restaurant = await db
+      .prepare("SELECT * FROM restaurants WHERE id = ? AND is_active = 1")
+      .bind(id)
+      .first<RestaurantRow>();
+    if (!restaurant) return {};
+
+    const name = getRestaurantName(restaurant, locale);
+    const summary = getRestaurantSummary(restaurant, locale);
+    return {
+      title: name,
+      description: summary || `${name} のガチ中華評価、Google レビュー分析、可信评分。`,
+      alternates: {
+        canonical: `/${locale}/restaurants/${id}`,
+      },
+      openGraph: {
+        title: name,
+        description: summary || undefined,
+        url: `/${locale}/restaurants/${id}`,
+        type: "article",
+      },
+    };
+  } catch {
+    return {};
+  }
+}
+
+export default async function RestaurantDetailPage({ params }: Props) {
   const { locale, id } = await params;
   const t = await getTranslations({ locale, namespace: "restaurant" });
   const ta = await getTranslations({ locale, namespace: "auth_badge" });

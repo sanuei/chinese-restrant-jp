@@ -1,4 +1,5 @@
 import { getDb } from "@/lib/cloudflare";
+import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { Filter, Map, MapPin, Search, Star } from "lucide-react";
@@ -16,6 +17,7 @@ import {
   type CuisineType,
   type RestaurantRow,
 } from "@/lib/restaurant-types";
+import { buildRestaurantSearchClause } from "@/lib/restaurant-search";
 
 export const dynamic = "force-dynamic";
 
@@ -46,6 +48,37 @@ function getSortOption(value: string): SortOption {
   return value === "reviews" || value === "newest" ? value : "rating";
 }
 
+export async function generateMetadata({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ locale: string }>;
+  searchParams: Promise<SearchParams>;
+}): Promise<Metadata> {
+  const { locale } = await params;
+  const queryParams = await searchParams;
+  const q = getQueryValue(queryParams.q).trim();
+  const cuisine = getCuisineFilter(getQueryValue(queryParams.cuisine));
+  const isZh = locale === "zh";
+  const title = q
+    ? (isZh ? `${q} 餐厅搜索` : `${q} の検索結果`)
+    : (isZh ? "东京中餐餐厅索引" : "東京の中国料理レストラン一覧");
+  const description = isZh
+    ? "按菜系、正宗度、可信评分筛选东京和关东ガチ中華。支持川菜、粤菜、茶餐厅、湖南菜等关键词搜索。"
+    : "料理ジャンル、認定、信頼スコアで東京・関東のガチ中華を検索できます。";
+  const query = new URLSearchParams();
+  if (q) query.set("q", q);
+  if (cuisine) query.set("cuisine", cuisine);
+
+  return {
+    title,
+    description,
+    alternates: {
+      canonical: `/${locale}/restaurants${query.toString() ? `?${query.toString()}` : ""}`,
+    },
+  };
+}
+
 export default async function RestaurantsPage({
   params,
   searchParams,
@@ -73,10 +106,11 @@ export default async function RestaurantsPage({
   const binds: SqlBind[] = [];
 
   if (q) {
-    // 简单的搜索
-    sql += ` AND (name_zh LIKE ? OR name_ja LIKE ? OR name_original LIKE ? OR address LIKE ? OR ward LIKE ?)`;
-    const likeQ = `%${q}%`;
-    binds.push(likeQ, likeQ, likeQ, likeQ, likeQ);
+    const searchClause = buildRestaurantSearchClause(q);
+    if (searchClause) {
+      sql += ` AND ${searchClause.condition}`;
+      binds.push(...searchClause.binds);
+    }
   }
 
   if (cuisine) {

@@ -58,6 +58,29 @@ export async function textSearchPlaces(
   return data.results || [];
 }
 
+export async function nearbySearchPlaces(
+  options: { lat: number; lng: number; radius?: number; keyword?: string }
+): Promise<GooglePlaceResult[]> {
+  const url = new URL("https://maps.googleapis.com/maps/api/place/nearbysearch/json");
+  url.searchParams.set("location", `${options.lat},${options.lng}`);
+  url.searchParams.set("radius", String(options.radius || 120));
+  url.searchParams.set("type", "restaurant");
+  url.searchParams.set("language", "ja");
+  url.searchParams.set("key", API_KEY as string);
+  if (options.keyword) {
+    url.searchParams.set("keyword", options.keyword);
+  }
+
+  const response = await fetch(url.toString());
+  const data = await response.json();
+
+  if (data.status !== "OK" && data.status !== "ZERO_RESULTS") {
+    throw new Error(`Google Maps API error: ${data.status} - ${data.error_message}`);
+  }
+
+  return data.results || [];
+}
+
 export async function searchRestaurants(query: string, city: string = "tokyo"): Promise<GooglePlaceResult[]> {
   return textSearchPlaces(`${query} in ${city}`);
 }

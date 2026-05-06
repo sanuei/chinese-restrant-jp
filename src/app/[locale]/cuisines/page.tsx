@@ -8,6 +8,17 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale } = await params;
   return {
     title: locale === "zh" ? "按菜系找餐厅" : "料理ジャンルから探す",
+    description: locale === "zh"
+      ? "按川菜、粤菜、茶餐厅、湖南菜、云南菜等菜系快速筛选东京和关东中餐厅。"
+      : "四川料理、広東料理、湖南料理などジャンル別に東京・関東のガチ中華を探せます。",
+    alternates: {
+      canonical: `/${locale}/cuisines`,
+      languages: {
+        zh: "/zh/cuisines",
+        ja: "/ja/cuisines",
+        "x-default": "/zh/cuisines",
+      },
+    },
   };
 }
 
@@ -56,4 +67,3 @@ export default async function CuisinesPage({ params }: Props) {
     </div>
   );
 }
-

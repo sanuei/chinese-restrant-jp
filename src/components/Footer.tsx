@@ -20,6 +20,12 @@ export default function Footer({ locale }: Props) {
             <p className="text-xs max-w-md text-center md:text-left" style={{ color: "var(--color-ink-400)" }}>
               {t("disclaimer")}
             </p>
+            <a
+              href="mailto:sanuei.yann@gmail.com"
+              className="text-xs font-medium text-ink-500 transition-colors hover:text-vermilion-700"
+            >
+              sanuei.yann@gmail.com
+            </a>
           </div>
           
           <div className="flex gap-6 text-sm font-medium" style={{ color: "var(--color-ink-700)" }}>

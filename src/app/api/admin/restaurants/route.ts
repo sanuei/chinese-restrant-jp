@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/cloudflare";
+import { buildRestaurantSearchClause } from "@/lib/restaurant-search";
 import type { RestaurantRow } from "@/lib/restaurant-types";
 
 // GET /api/admin/restaurants — 列表，支持搜索/筛选/分页
@@ -25,9 +26,11 @@ export async function GET(req: NextRequest) {
     const conditions: string[] = ["is_active = 1"];
 
     if (q) {
-      conditions.push(`(name_zh LIKE ? OR name_ja LIKE ? OR name_original LIKE ? OR address LIKE ?)`);
-      const like = `%${q}%`;
-      binds.push(like, like, like, like);
+      const searchClause = buildRestaurantSearchClause(q);
+      if (searchClause) {
+        conditions.push(searchClause.condition);
+        binds.push(...searchClause.binds);
+      }
     }
     if (cuisine) {
       conditions.push(`cuisine_type = ?`);
