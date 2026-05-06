@@ -79,9 +79,9 @@ const verdictCopy = {
   },
 };
 
-export default function VerifyTool({ locale }: { locale: string }) {
+export default function VerifyTool({ locale, initialUrl = "" }: { locale: string; initialUrl?: string }) {
   const isZh = locale === "zh";
-  const [url, setUrl] = useState("");
+  const [url, setUrl] = useState(initialUrl);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [result, setResult] = useState<VerifyResult | null>(null);

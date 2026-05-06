@@ -20,7 +20,7 @@
     "clsx": "^2.1.1",
     "dotenv": "^17.4.2",
     "lucide-react": "^1.14.0",
-    "next": "^15.2.4",
+    "next": "^15.5.15",
     "next-intl": "^4.11.0",
     "react": "^19.2.5",
     "react-dom": "^19.2.5",
@@ -33,7 +33,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
-    "eslint-config-next": "16.2.4",
+    "eslint-config-next": "^16.2.4",
     "tailwindcss": "^4",
     "typescript": "^5",
     "wrangler": "^4.87.0"

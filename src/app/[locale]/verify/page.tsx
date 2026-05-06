@@ -1,7 +1,10 @@
 import type { Metadata } from "next";
 import VerifyTool from "@/components/VerifyTool";
 
-type Props = { params: Promise<{ locale: string }> };
+type Props = {
+  params: Promise<{ locale: string }>;
+  searchParams?: Promise<{ url?: string | string[] }>;
+};
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale } = await params;
@@ -21,12 +24,14 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   };
 }
 
-export default async function VerifyPage({ params }: Props) {
+export default async function VerifyPage({ params, searchParams }: Props) {
   const { locale } = await params;
+  const query = await searchParams;
+  const initialUrl = Array.isArray(query?.url) ? query.url[0] || "" : query?.url || "";
 
   return (
     <main className="mx-auto max-w-6xl px-4 py-10 sm:px-6 lg:px-8">
-      <VerifyTool locale={locale} />
+      <VerifyTool locale={locale} initialUrl={initialUrl} />
     </main>
   );
 }
