@@ -2,7 +2,35 @@ import { getDb } from "@/lib/cloudflare";
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import Link from "next/link";
-import { Filter, Map, MapPin, Search, Star } from "lucide-react";
+import {
+  Clock3,
+  Flame,
+  MapPin,
+  Search,
+  ShieldCheck,
+  Star,
+  Trophy,
+  X,
+} from "lucide-react";
+import {
+  buildRestaurantSearchClause,
+  getCuisineTypesForSearchQuery,
+} from "@/lib/restaurant-search";
+import {
+  formatSyncLabel,
+  getAreaLabel,
+  getOpeningStatus,
+  getPriceLevelSymbols,
+  getPrimaryPhotoUrl,
+  getTrustSummary,
+  isTrustedPriority,
+  matchesBusinessFilter,
+  matchesScene,
+  sortRestaurants,
+  type BusinessFilter,
+  type DiscoveryScene,
+  type DiscoverySort,
+} from "@/lib/restaurant-discovery";
 import {
   authenticityTypes,
   cuisineTypes,
@@ -12,20 +40,23 @@ import {
   normalizeAuthenticity,
   normalizeCuisineType,
   normalizePriceLevel,
-  parsePhotoReferences,
   type Authenticity,
   type CuisineType,
   type RestaurantRow,
 } from "@/lib/restaurant-types";
-import { buildRestaurantSearchClause } from "@/lib/restaurant-search";
 
 export const dynamic = "force-dynamic";
 
 type SearchParams = { [key: string]: string | string[] | undefined };
 type SqlBind = string | number | boolean | null;
-type SortOption = "rating" | "reviews" | "newest";
+type AreaRow = { area: string };
 
-const minRatingOptions = [4.5, 4, 3.5] as const;
+const minRatingOptions = [4.5, 4.2, 4] as const;
+const priceOptions = [1, 2, 3, 4] as const;
+const boardOptions = ["rating", "reviews", "newest"] as const;
+const sortOptions = ["recommended", "rating", "reviews", "newest", "trusted"] as const;
+const sceneOptions = ["solo", "group", "late-night", "budget"] as const;
+const businessOptions = ["lunch", "dinner", "late"] as const;
 
 function getQueryValue(value: string | string[] | undefined): string {
   return Array.isArray(value) ? value[0] || "" : value || "";
@@ -44,8 +75,65 @@ function getMinRatingFilter(value: string): number | null {
   return minRatingOptions.includes(rating as (typeof minRatingOptions)[number]) ? rating : null;
 }
 
-function getSortOption(value: string): SortOption {
-  return value === "reviews" || value === "newest" ? value : "rating";
+function getSortOption(value: string): DiscoverySort {
+  return sortOptions.includes(value as DiscoverySort) ? (value as DiscoverySort) : "recommended";
+}
+
+function getBoardOption(value: string): "rating" | "reviews" | "newest" {
+  return boardOptions.includes(value as (typeof boardOptions)[number])
+    ? (value as "rating" | "reviews" | "newest")
+    : "rating";
+}
+
+function getPriceFilter(value: string): number | null {
+  const level = Number(value);
+  return priceOptions.includes(level as (typeof priceOptions)[number]) ? level : null;
+}
+
+function getSceneFilter(value: string): DiscoveryScene | "" {
+  return sceneOptions.includes(value as DiscoveryScene) ? (value as DiscoveryScene) : "";
+}
+
+function getBusinessFilter(value: string): BusinessFilter | "" {
+  return businessOptions.includes(value as BusinessFilter) ? (value as BusinessFilter) : "";
+}
+
+function getTruthyFlag(value: string): boolean {
+  return value === "1" || value === "true";
+}
+
+function buildQuery(params: Record<string, string | number | boolean | null | undefined>) {
+  const query = new URLSearchParams();
+  Object.entries(params).forEach(([key, value]) => {
+    if (value === null || value === undefined || value === "" || value === false) return;
+    query.set(key, String(value));
+  });
+  return query;
+}
+
+function removeParam(queryString: string, key: string) {
+  const params = new URLSearchParams(queryString);
+  params.delete(key);
+  return params.toString();
+}
+
+function getSortDescription(sort: DiscoverySort, locale: string): string {
+  const map = locale === "zh"
+    ? {
+        recommended: "默认推荐: 可信评分 + 评论量 + 认证强度综合排序",
+        rating: "高分优先: 先看可信评分，再看评论量",
+        reviews: "热度优先: 按原始评论量排序",
+        newest: "最近更新: 按最近同步时间排序",
+        trusted: "可信度优先: 先看认证强度、可信评论量和评分稳定度",
+      }
+    : {
+        recommended: "おすすめ順: 信頼スコア、レビュー量、認定強度を総合",
+        rating: "高評価順: 信頼スコア優先、次にレビュー量",
+        reviews: "人気順: 元レビュー数を優先",
+        newest: "最近更新: 最終同期時刻を優先",
+        trusted: "信頼度順: 認定強度、信頼レビュー量、評価安定度を優先",
+      };
+  return map[sort];
 }
 
 export async function generateMetadata({
@@ -58,21 +146,27 @@ export async function generateMetadata({
   const { locale } = await params;
   const queryParams = await searchParams;
   const q = getQueryValue(queryParams.q).trim();
-  const cuisine = getCuisineFilter(getQueryValue(queryParams.cuisine));
-  const isZh = locale === "zh";
   const title = q
-    ? (isZh ? `${q} 餐厅搜索` : `${q} の検索結果`)
-    : (isZh ? "东京中餐餐厅索引" : "東京の中国料理レストラン一覧");
-  const description = isZh
-    ? "按菜系、正宗度、可信评分筛选东京和关东ガチ中華。支持川菜、粤菜、茶餐厅、湖南菜等关键词搜索。"
-    : "料理ジャンル、認定、信頼スコアで東京・関東のガチ中華を検索できます。";
-  const query = new URLSearchParams();
-  if (q) query.set("q", q);
-  if (cuisine) query.set("cuisine", cuisine);
+    ? locale === "zh"
+      ? `${q} 餐厅搜索`
+      : `${q} の検索結果`
+    : locale === "zh"
+      ? "东京中餐馆"
+      : "東京の中華料理店";
+
+  const query = buildQuery({
+    q,
+    cuisine: getQueryValue(queryParams.cuisine),
+    area: getQueryValue(queryParams.area),
+    sort: getQueryValue(queryParams.sort),
+  });
 
   return {
     title,
-    description,
+    description:
+      locale === "zh"
+        ? "按菜系、区域、价格带、可信度与榜单视角筛选东京中餐馆。"
+        : "料理、エリア、価格帯、信頼度、ランキング視点で東京の中華料理店を比較。",
     alternates: {
       canonical: `/${locale}/restaurants${query.toString() ? `?${query.toString()}` : ""}`,
     },
@@ -87,21 +181,36 @@ export default async function RestaurantsPage({
   searchParams: Promise<SearchParams>;
 }) {
   const { locale } = await params;
-  const t = await getTranslations({ locale, namespace: "restaurant" });
-  const ta = await getTranslations({ locale, namespace: "auth_badge" });
   const tc = await getTranslations({ locale, namespace: "cuisine" });
+  const ta = await getTranslations({ locale, namespace: "auth_badge" });
   const queryParams = await searchParams;
-  
+
   const q = getQueryValue(queryParams.q).trim();
   const cuisine = getCuisineFilter(getQueryValue(queryParams.cuisine));
   const authenticityFilter = getAuthenticityFilter(getQueryValue(queryParams.authenticity));
   const minRating = getMinRatingFilter(getQueryValue(queryParams.minRating));
   const sort = getSortOption(getQueryValue(queryParams.sort));
-  const hasFilters = Boolean(q || cuisine || authenticityFilter || minRating || sort !== "rating");
+  const board = getBoardOption(getQueryValue(queryParams.board));
+  const priceLevel = getPriceFilter(getQueryValue(queryParams.price));
+  const area = getQueryValue(queryParams.area).trim();
+  const scene = getSceneFilter(getQueryValue(queryParams.scene));
+  const business = getBusinessFilter(getQueryValue(queryParams.business));
+  const trustedOnly = getTruthyFlag(getQueryValue(queryParams.trusted));
+  const hasFilters = Boolean(
+    q ||
+      cuisine ||
+      authenticityFilter ||
+      minRating ||
+      priceLevel ||
+      area ||
+      scene ||
+      business ||
+      trustedOnly ||
+      sort !== "recommended",
+  );
 
   const db = await getDb();
 
-  // 构建查询语句
   let sql = `SELECT * FROM restaurants WHERE is_active = 1`;
   const binds: SqlBind[] = [];
 
@@ -128,93 +237,173 @@ export default async function RestaurantsPage({
     binds.push(minRating);
   }
 
-  if (sort === "reviews") {
-    sql += ` ORDER BY raw_review_count DESC, trusted_rating DESC LIMIT 50`;
-  } else if (sort === "newest") {
-    sql += ` ORDER BY last_synced_at DESC, updated_at DESC, trusted_rating DESC LIMIT 50`;
-  } else {
-    sql += ` ORDER BY trusted_rating DESC, raw_review_count DESC LIMIT 50`;
+  if (priceLevel) {
+    sql += ` AND price_level = ?`;
+    binds.push(priceLevel);
   }
 
-  let restaurants: RestaurantRow[] = [];
-  try {
-    const { results = [] } = await db.prepare(sql).bind(...binds).all<RestaurantRow>();
-    restaurants = results || [];
-  } catch (error) {
-    console.error("Database query error:", error);
+  if (area) {
+    sql += ` AND (ward = ? OR city = ?)`;
+    binds.push(area, area);
   }
 
-  const filterQuery = new URLSearchParams();
-  if (q) filterQuery.set("q", q);
-  if (cuisine) filterQuery.set("cuisine", cuisine);
-  if (authenticityFilter) filterQuery.set("authenticity", authenticityFilter);
-  if (minRating) filterQuery.set("minRating", String(minRating));
-  if (sort !== "rating") filterQuery.set("sort", sort);
-  const filterQueryString = filterQuery.toString();
-  const mapHref = `/${locale}/map${filterQueryString ? `?${filterQueryString}` : ""}`;
+  sql += ` LIMIT 240`;
+
+  const [restaurantsResult, areaResult] = await Promise.all([
+    db.prepare(sql).bind(...binds).all<RestaurantRow>(),
+    db
+      .prepare(
+        `SELECT DISTINCT COALESCE(ward, city) as area
+         FROM restaurants
+         WHERE is_active = 1 AND COALESCE(ward, city) IS NOT NULL
+         ORDER BY area ASC`
+      )
+      .all<AreaRow>(),
+  ]);
+
+  const areas = (areaResult.results ?? []).map((item) => item.area).filter(Boolean);
+  const baseRestaurants = restaurantsResult.results ?? [];
+  const filteredRestaurants = baseRestaurants.filter((restaurant) => {
+    if (trustedOnly && !isTrustedPriority(restaurant)) return false;
+    if (!matchesScene(restaurant, scene)) return false;
+    if (!matchesBusinessFilter(restaurant, business)) return false;
+    return true;
+  });
+
+  const effectiveSort = sort === "recommended" && getQueryValue(queryParams.sort) === "" ? board : sort;
+  const restaurants = sortRestaurants(filteredRestaurants, effectiveSort).slice(0, 60);
+
+  const currentQuery = buildQuery({
+    q,
+    cuisine,
+    authenticity: authenticityFilter,
+    minRating,
+    price: priceLevel,
+    area,
+    scene,
+    business,
+    trusted: trustedOnly ? 1 : "",
+    sort,
+    board,
+  });
+  const currentQueryString = currentQuery.toString();
+
+  const boardTabs = [
+    { id: "rating", label: locale === "zh" ? "高分榜" : "高評価ランキング", icon: Trophy },
+    { id: "reviews", label: locale === "zh" ? "热度榜" : "人気ランキング", icon: Flame },
+    { id: "newest", label: locale === "zh" ? "最近更新" : "最近更新", icon: Clock3 },
+  ] as const;
+
   const copy = locale === "zh"
     ? {
-        title: q ? `搜索结果: "${q}"` : "全部餐厅",
-        subtitle: "按菜系、正宗度和可信评分筛选东京餐厅。",
-        search: "餐厅、菜系、地区",
+        title: "东京中餐馆",
+        subtitle: "先用高价值筛选缩小范围，再用榜单和卡片做快速比较。",
+        summaryPrefix: `${restaurants.length} 家结果`,
+        search: "搜索店名、菜系、区域",
         allCuisines: "全部菜系",
         allAuthenticity: "全部认证",
-        minRating: "最低可信评分",
+        allAreas: "全部区域",
+        price: "价格带",
+        allPrices: "不限价格",
+        minRating: "最低评分",
         anyRating: "不限评分",
-        sort: "排序",
-        sortRating: "可信评分优先",
-        sortReviews: "评论量优先",
-        sortNewest: "最近同步优先",
-        submit: "筛选",
-        reset: "清除",
-        map: "地图视图",
-        count: `找到 ${restaurants.length} 家餐厅`,
-        empty: "没有找到相关餐厅。请尝试其他关键词或菜系。",
+        scene: "场景标签",
+        anyScene: "不限场景",
+        business: "营业时段",
+        anyBusiness: "不限时段",
+        sort: "排序方式",
+        trustedOnly: "可信优先",
+        reset: "清除筛选",
+        map: "地图",
+        details: "看详情",
+        empty: "没有找到完全匹配的餐厅。",
+        emptyHint: "可以清空筛选、切换高分榜，或先从热门菜系继续看。",
+        boardLabel: "榜单视角",
+        sortDescription: getSortDescription(effectiveSort, locale),
+        actions: [
+          { label: "清空筛选", href: `/${locale}/restaurants` },
+          { label: "回到高分榜", href: `/${locale}/restaurants?sort=rating` },
+          { label: "看川菜", href: `/${locale}/restaurants?cuisine=sichuan&sort=rating` },
+          { label: "看粤菜", href: `/${locale}/restaurants?cuisine=cantonese&sort=reviews` },
+        ],
       }
     : {
-        title: q ? `検索結果: "${q}"` : "すべてのレストラン",
-        subtitle: "料理ジャンル・認定・信頼スコアで東京の店を絞り込み。",
-        search: "店名・ジャンル・エリア",
-        allCuisines: "すべてのジャンル",
+        title: "東京中華料理店",
+        subtitle: "価値の高い条件で候補を減らし、ランキングとカードで一気に比較します。",
+        summaryPrefix: `${restaurants.length}件`,
+        search: "店名・料理・エリアで検索",
+        allCuisines: "すべての料理",
         allAuthenticity: "すべての認定",
-        minRating: "最低信頼スコア",
+        allAreas: "すべてのエリア",
+        price: "価格帯",
+        allPrices: "価格指定なし",
+        minRating: "最低スコア",
         anyRating: "指定なし",
+        scene: "シーン",
+        anyScene: "シーン指定なし",
+        business: "営業時間帯",
+        anyBusiness: "時間帯指定なし",
         sort: "並び替え",
-        sortRating: "信頼スコア順",
-        sortReviews: "レビュー数順",
-        sortNewest: "同期が新しい順",
-        submit: "絞り込む",
+        trustedOnly: "信頼優先",
         reset: "クリア",
-        map: "マップ表示",
-        count: `${restaurants.length}件のレストラン`,
-        empty: "該当するレストランが見つかりません。条件を変えてお試しください。",
+        map: "地図",
+        details: "詳細を見る",
+        empty: "条件に合う店が見つかりませんでした。",
+        emptyHint: "条件を外すか、高評価ランキングや人気料理から見直すと戻りやすいです。",
+        boardLabel: "ランキング視点",
+        sortDescription: getSortDescription(effectiveSort, locale),
+        actions: [
+          { label: "条件を外す", href: `/${locale}/restaurants` },
+          { label: "高評価に戻る", href: `/${locale}/restaurants?sort=rating` },
+          { label: "四川料理を見る", href: `/${locale}/restaurants?cuisine=sichuan&sort=rating` },
+          { label: "広東料理を見る", href: `/${locale}/restaurants?cuisine=cantonese&sort=reviews` },
+        ],
       };
 
-  return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-      <div className="flex flex-col gap-6 mb-8">
-        <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-4">
-          <div>
-            <div className="inline-flex items-center gap-2 text-xs font-bold tracking-[0.18em] uppercase mb-2 text-vermilion-700">
-              <Filter size={14} />
-              {locale === "zh" ? "餐厅索引" : "Restaurant Index"}
-            </div>
-            <h1 className="font-serif font-bold text-3xl mb-2" style={{ color: "var(--color-ink-900)" }}>
-              {copy.title}
-            </h1>
-            <p className="text-sm text-ink-400">{copy.subtitle}</p>
-          </div>
+  const summaryTags = [
+    q ? { key: "q", label: q } : null,
+    cuisine ? { key: "cuisine", label: tc(cuisine) } : null,
+    area ? { key: "area", label: area } : null,
+    priceLevel ? { key: "price", label: getPriceLevelSymbols(priceLevel) } : null,
+    minRating ? { key: "minRating", label: `${minRating}+` } : null,
+    authenticityFilter ? { key: "authenticity", label: ta(authenticityFilter) } : null,
+    scene ? { key: "scene", label: getSceneLabel(scene, locale) } : null,
+    business ? { key: "business", label: getBusinessLabel(business, locale) } : null,
+    trustedOnly ? { key: "trusted", label: copy.trustedOnly } : null,
+  ].filter(Boolean) as { key: string; label: string }[];
 
-          <Link href={mapHref} className="btn-primary w-full sm:w-auto">
-            <Map size={16} />
-            {copy.map}
-          </Link>
+  const searchHints = getCuisineTypesForSearchQuery(q);
+
+  return (
+    <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+      <div className="rounded-[28px] border border-warm-200 bg-[linear-gradient(180deg,#fff,#f6f1e8)] p-6 shadow-sm">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <div className="text-xs font-bold uppercase tracking-[0.18em] text-vermilion-700">
+              {locale === "zh" ? "Restaurant Index" : "Restaurant Index"}
+            </div>
+            <h1 className="mt-3 font-serif text-4xl font-bold text-ink-900">{copy.title}</h1>
+            <p className="mt-2 max-w-3xl text-sm leading-6 text-ink-400">{copy.subtitle}</p>
+          </div>
+          <div className="max-w-2xl text-sm text-ink-700">
+            <div className="font-medium">{copy.summaryPrefix}</div>
+            <div className="mt-1 text-ink-400">
+              {summaryTags.length > 0
+                ? `${locale === "zh" ? "已筛选" : "絞り込み"} ${summaryTags.map((tag) => tag.label).join(" / ")}`
+                : locale === "zh"
+                  ? "当前未加筛选"
+                  : "現在は追加条件なし"}
+              {" · "}
+              {copy.sortDescription}
+            </div>
+          </div>
         </div>
 
-        <form action={`/${locale}/restaurants`} className="bg-white border border-warm-200 rounded-xl shadow-sm p-4">
-          <div className="grid grid-cols-1 md:grid-cols-[1.4fr_1fr_1fr] xl:grid-cols-[1.5fr_1fr_1fr_1fr_1fr_auto] gap-3">
+        <form action={`/${locale}/restaurants`} className="mt-6 rounded-[24px] border border-warm-200 bg-white p-4">
+          <input type="hidden" name="board" value={board} />
+          <div className="grid gap-3 xl:grid-cols-[1.4fr_0.95fr_0.95fr_0.95fr_0.95fr]">
             <label className="relative">
-              <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-400 pointer-events-none z-10" />
+              <Search size={17} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-400" />
               <input
                 name="q"
                 defaultValue={q}
@@ -226,121 +415,363 @@ export default async function RestaurantsPage({
             <select name="cuisine" defaultValue={cuisine} className="filter-select">
               <option value="">{copy.allCuisines}</option>
               {cuisineTypes.map((type) => (
-                <option key={type} value={type}>{tc(type)}</option>
+                <option key={type} value={type}>
+                  {tc(type)}
+                </option>
+              ))}
+            </select>
+
+            <select name="area" defaultValue={area} className="filter-select">
+              <option value="">{copy.allAreas}</option>
+              {areas.map((item) => (
+                <option key={item} value={item}>
+                  {item}
+                </option>
+              ))}
+            </select>
+
+            <select name="price" defaultValue={priceLevel ? String(priceLevel) : ""} className="filter-select">
+              <option value="">{copy.allPrices}</option>
+              {priceOptions.map((level) => (
+                <option key={level} value={level}>
+                  {copy.price} {getPriceLevelSymbols(level)}
+                </option>
+              ))}
+            </select>
+
+            <label className="flex min-h-11 items-center justify-between rounded-md border border-warm-200 bg-warm-50 px-3 text-sm text-ink-700">
+              <span className="inline-flex items-center gap-2">
+                <ShieldCheck size={15} className="text-[#2F6B5F]" />
+                {copy.trustedOnly}
+              </span>
+              <input
+                type="checkbox"
+                name="trusted"
+                value="1"
+                defaultChecked={trustedOnly}
+                className="h-4 w-4 accent-[#2F6B5F]"
+              />
+            </label>
+          </div>
+
+          <div className="mt-3 grid gap-3 xl:grid-cols-[0.9fr_0.9fr_0.9fr_1fr_0.9fr_auto]">
+            <select name="minRating" defaultValue={minRating ? String(minRating) : ""} className="filter-select">
+              <option value="">{copy.anyRating}</option>
+              {minRatingOptions.map((rating) => (
+                <option key={rating} value={rating}>
+                  {copy.minRating} {rating}+
+                </option>
               ))}
             </select>
 
             <select name="authenticity" defaultValue={authenticityFilter} className="filter-select">
               <option value="">{copy.allAuthenticity}</option>
               {authenticityTypes.map((type) => (
-                <option key={type} value={type}>{ta(type)}</option>
+                <option key={type} value={type}>
+                  {ta(type)}
+                </option>
               ))}
             </select>
 
-            <select name="minRating" defaultValue={minRating ? String(minRating) : ""} className="filter-select">
-              <option value="">{copy.anyRating}</option>
-              {minRatingOptions.map((rating) => (
-                <option key={rating} value={rating}>{copy.minRating} {rating}+</option>
+            <select name="business" defaultValue={business} className="filter-select">
+              <option value="">{copy.anyBusiness}</option>
+              {businessOptions.map((item) => (
+                <option key={item} value={item}>
+                  {getBusinessLabel(item, locale)}
+                </option>
+              ))}
+            </select>
+
+            <select name="scene" defaultValue={scene} className="filter-select">
+              <option value="">{copy.anyScene}</option>
+              {sceneOptions.map((item) => (
+                <option key={item} value={item}>
+                  {getSceneLabel(item, locale)}
+                </option>
               ))}
             </select>
 
             <select name="sort" defaultValue={sort} className="filter-select">
-              <option value="rating">{copy.sortRating}</option>
-              <option value="reviews">{copy.sortReviews}</option>
-              <option value="newest">{copy.sortNewest}</option>
+              <option value="recommended">{locale === "zh" ? "默认推荐" : "おすすめ順"}</option>
+              <option value="rating">{locale === "zh" ? "高分优先" : "高評価順"}</option>
+              <option value="reviews">{locale === "zh" ? "热度优先" : "人気順"}</option>
+              <option value="newest">{locale === "zh" ? "最近更新" : "最近更新"}</option>
+              <option value="trusted">{locale === "zh" ? "可信度优先" : "信頼度順"}</option>
             </select>
 
             <div className="flex gap-2">
-              <button type="submit" className="btn-primary min-h-11 px-4 flex-1 xl:flex-none">
-                {copy.submit}
+              <button type="submit" className="btn-primary min-h-11 flex-1 px-4">
+                {locale === "zh" ? "应用筛选" : "条件を適用"}
               </button>
-              {hasFilters && (
+              {hasFilters ? (
                 <Link
                   href={`/${locale}/restaurants`}
                   className="inline-flex min-h-11 items-center justify-center rounded-md border border-warm-200 bg-white px-4 text-sm font-semibold text-ink-700 hover:text-vermilion-700"
                 >
                   {copy.reset}
                 </Link>
-              )}
+              ) : null}
             </div>
           </div>
         </form>
 
-        <div className="text-sm text-ink-400">{copy.count}</div>
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap gap-2">
+            {summaryTags.map((tag) => (
+              <Link
+                key={tag.key}
+                href={`/${locale}/restaurants${removeParam(currentQueryString, tag.key) ? `?${removeParam(currentQueryString, tag.key)}` : ""}`}
+                className="inline-flex items-center gap-1 rounded-full border border-warm-200 bg-white px-3 py-1.5 text-sm text-ink-700"
+              >
+                {tag.label}
+                <X size={14} />
+              </Link>
+            ))}
+            {searchHints.length > 0 && !cuisine
+              ? searchHints.map((hint) => (
+                  <Link
+                    key={hint}
+                    href={`/${locale}/restaurants?${buildQuery({
+                      q,
+                      cuisine: hint,
+                      area,
+                      price: priceLevel,
+                      minRating,
+                      sort,
+                    }).toString()}`}
+                    className="inline-flex items-center rounded-full bg-gold-300/20 px-3 py-1.5 text-sm text-ink-700"
+                  >
+                    {locale === "zh" ? "识别到菜系:" : "料理推定:"} {tc(hint)}
+                  </Link>
+                ))
+              : null}
+          </div>
+
+          <Link
+            href={`/${locale}/map${currentQueryString ? `?${currentQueryString}` : ""}`}
+            className="inline-flex items-center gap-2 rounded-full border border-warm-200 bg-white px-4 py-2 text-sm font-medium text-ink-700 hover:text-vermilion-700"
+          >
+            <MapPin size={15} />
+            {copy.map}
+          </Link>
+        </div>
       </div>
 
-      {restaurants.length === 0 ? (
-        <div className="text-center py-20 text-ink-400">
-          <p>{copy.empty}</p>
+      <section className="mt-8">
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <div className="text-sm font-medium text-ink-700">{copy.boardLabel}</div>
+          <div className="text-sm text-ink-400">{copy.sortDescription}</div>
         </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {restaurants.map((restaurant) => {
-            const name = getRestaurantName(restaurant, locale);
-            const summary = getRestaurantSummary(restaurant, locale);
-            const authenticity = normalizeAuthenticity(restaurant.authenticity);
-            const cuisineType = normalizeCuisineType(restaurant.cuisine_type);
-            const priceLevel = normalizePriceLevel(restaurant.price_level);
-            
-            let photoUrl = "https://images.unsplash.com/photo-1563245372-f21724e3856d?q=80&w=600&auto=format&fit=crop"; // fallback
-            const photos = parsePhotoReferences(restaurant.photos);
-            if (photos.length > 0) {
-              const first = photos[0];
-              photoUrl = first.startsWith("http")
-                ? first
-                : `https://maps.googleapis.com/maps/api/place/photo?maxwidth=800&photo_reference=${first}&key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}`;
-            }
-
+        <div className="flex flex-wrap gap-3">
+          {boardTabs.map((tab) => {
+            const href = buildQuery({
+              q,
+              cuisine,
+              authenticity: authenticityFilter,
+              minRating,
+              price: priceLevel,
+              area,
+              scene,
+              business,
+              trusted: trustedOnly ? 1 : "",
+              board: tab.id,
+              sort: tab.id,
+            }).toString();
+            const active = effectiveSort === tab.id;
+            const Icon = tab.icon;
             return (
-              <Link key={restaurant.id} href={`/${locale}/restaurants/${restaurant.id}`} className="restaurant-card group block">
-                <div className="relative h-48 overflow-hidden bg-warm-100">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img 
-                    src={photoUrl} 
-                    alt={name}
-                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                  />
-                  <div className="absolute top-3 right-3 flex gap-2">
-                    <span className={`badge-${authenticity}`}>
-                      {authenticity === "authentic" ? "🔴 " : authenticity === "adapted" ? "🟡 " : "🔵 "}
-                      {ta(authenticity)}
-                    </span>
-                  </div>
-                </div>
-                
-                <div className="p-5">
-                  <div className="flex justify-between items-start mb-2">
-                    <h3 className="font-bold text-lg leading-tight" style={{ color: "var(--color-ink-900)" }}>
-                      {name}
-                    </h3>
-                    <div className="flex items-center gap-1 bg-warm-50 px-2 py-1 rounded-md" style={{ color: "var(--color-ink-900)" }}>
-                      <Star size={14} className="fill-gold-500 text-gold-500" style={{ color: "var(--color-gold-500)", fill: "var(--color-gold-500)" }} />
-                      <span className="font-bold text-sm">{getRating(restaurant).toFixed(1)}</span>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-3 text-xs mb-4" style={{ color: "var(--color-ink-400)" }}>
-                    <span className="flex items-center gap-1"><MapPin size={12} /> {restaurant.ward || restaurant.city}</span>
-                    <span className={`cuisine-tag cuisine-${cuisineType}`}>{tc(cuisineType)}</span>
-                    {priceLevel && <span>{t(`price_level.${priceLevel}`)}</span>}
-                  </div>
-
-                  {summary && (
-                    <div className="ai-summary-card text-sm leading-snug" style={{ color: "var(--color-ink-700)" }}>
-                      {summary}
-                    </div>
-                  )}
-                  
-                  <div className="mt-4 text-xs flex justify-between items-center" style={{ color: "var(--color-ink-400)" }}>
-                    <span>{restaurant.trusted_review_count || 0} {t("trusted_reviews")}</span>
-                    <span>Google: {(restaurant.raw_rating || 0).toFixed(1)}</span>
-                  </div>
-                </div>
+              <Link
+                key={tab.id}
+                href={`/${locale}/restaurants?${href}`}
+                className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition ${
+                  active
+                    ? "bg-vermilion-700 text-white"
+                    : "border border-warm-200 bg-white text-ink-700 hover:border-vermilion-200 hover:text-vermilion-700"
+                }`}
+              >
+                <Icon size={15} />
+                {tab.label}
               </Link>
             );
           })}
         </div>
+      </section>
+
+      {restaurants.length === 0 ? (
+        <section className="mt-10 rounded-[28px] border border-dashed border-warm-200 bg-white p-10 text-center">
+          <div className="mx-auto max-w-xl">
+            <div className="font-serif text-3xl font-bold text-ink-900">{copy.empty}</div>
+            <p className="mt-3 text-sm leading-6 text-ink-400">{copy.emptyHint}</p>
+            <div className="mt-6 flex flex-wrap justify-center gap-3">
+              {copy.actions.map((action) => (
+                <Link
+                  key={action.label}
+                  href={action.href}
+                  className="rounded-full border border-warm-200 bg-warm-50 px-4 py-2 text-sm font-medium text-ink-700 hover:text-vermilion-700"
+                >
+                  {action.label}
+                </Link>
+              ))}
+            </div>
+          </div>
+        </section>
+      ) : (
+        <section className="mt-8 space-y-4">
+          {restaurants.map((restaurant, index) => {
+            const name = getRestaurantName(restaurant, locale);
+            const secondaryName =
+              locale === "zh"
+                ? restaurant.name_ja || restaurant.name_original
+                : restaurant.name_zh || restaurant.name_original;
+            const summary = getRestaurantSummary(restaurant, locale);
+            const cuisineType = normalizeCuisineType(restaurant.cuisine_type);
+            const authenticity = normalizeAuthenticity(restaurant.authenticity);
+            const price = normalizePriceLevel(restaurant.price_level);
+            const areaLabel = getAreaLabel(restaurant);
+            const mapHref = restaurant.google_maps_url || `/${locale}/map?restaurant=${restaurant.id}`;
+
+            return (
+              <article
+                key={restaurant.id}
+                className="grid gap-4 rounded-[26px] border border-warm-200 bg-white p-4 shadow-sm lg:grid-cols-[220px_1fr_200px]"
+              >
+                <div className="relative overflow-hidden rounded-[22px] bg-warm-100">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={getPrimaryPhotoUrl(restaurant, 720)} alt={name} className="h-full min-h-52 w-full object-cover" />
+                  <div className="absolute left-3 top-3 flex items-center gap-2">
+                    <span className="flex h-9 w-9 items-center justify-center rounded-full bg-gold-300/95 font-serif text-lg font-black text-vermilion-700">
+                      {index + 1}
+                    </span>
+                    {effectiveSort !== "recommended" ? (
+                      <span className="rounded-full bg-white/88 px-3 py-1 text-xs font-semibold text-ink-700">
+                        {getBoardBadge(effectiveSort, locale)}
+                      </span>
+                    ) : null}
+                  </div>
+                </div>
+
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <h2 className="truncate font-serif text-3xl font-bold text-ink-900">{name}</h2>
+                        <span className={`badge-${authenticity}`}>{ta(authenticity)}</span>
+                      </div>
+                      <div className="mt-1 text-sm text-ink-400">{secondaryName}</div>
+                    </div>
+                    <div className="rounded-[18px] border border-[#2F6B5F]/18 bg-[#2F6B5F]/8 px-4 py-3 text-right">
+                      <div className="text-xs font-semibold text-[#2F6B5F]">
+                        {locale === "zh" ? "可信评分" : "信頼スコア"}
+                      </div>
+                      <div className="mt-1 text-3xl font-black text-[#2F6B5F]">{getRating(restaurant).toFixed(1)}</div>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 flex flex-wrap gap-2 text-sm">
+                    <span className={`cuisine-tag cuisine-${cuisineType}`}>{tc(cuisineType)}</span>
+                    <span className="rounded-full bg-warm-50 px-3 py-1.5 text-ink-700">{areaLabel || (locale === "zh" ? "区域待补充" : "エリア追記予定")}</span>
+                    <span className="rounded-full bg-warm-50 px-3 py-1.5 text-ink-700">{price ? `${getPriceLevelSymbols(price)} · ${locale === "zh" ? "人均" : "1人"}` : (locale === "zh" ? "价格待补充" : "価格追記予定")}</span>
+                    <span className="rounded-full bg-gold-300/18 px-3 py-1.5 text-ink-700">
+                      Google {(restaurant.raw_rating || 0).toFixed(1)} · {(restaurant.raw_review_count || 0).toLocaleString()}
+                    </span>
+                    <span className="rounded-full bg-warm-50 px-3 py-1.5 text-ink-700">{getOpeningStatus(restaurant.opening_hours, locale)}</span>
+                  </div>
+
+                  <p className="mt-4 text-sm leading-7 text-ink-700">
+                    {summary || getTrustSummary(restaurant, locale)}
+                  </p>
+
+                  <div className="mt-4 grid gap-3 text-sm text-ink-700 md:grid-cols-2 xl:grid-cols-3">
+                    <div className="rounded-2xl bg-warm-50 px-4 py-3">
+                      <div className="text-xs font-semibold text-ink-400">{locale === "zh" ? "为什么值得信" : "信頼できる理由"}</div>
+                      <div className="mt-1">{getTrustSummary(restaurant, locale)}</div>
+                    </div>
+                    <div className="rounded-2xl bg-warm-50 px-4 py-3">
+                      <div className="text-xs font-semibold text-ink-400">{locale === "zh" ? "同步状态" : "同期状況"}</div>
+                      <div className="mt-1">{formatSyncLabel(restaurant.last_synced_at || restaurant.updated_at, locale)}</div>
+                    </div>
+                    <div className="rounded-2xl bg-warm-50 px-4 py-3">
+                      <div className="text-xs font-semibold text-ink-400">{locale === "zh" ? "评论可信度" : "レビュー信頼度"}</div>
+                      <div className="mt-1">
+                        {(restaurant.trusted_review_count || 0).toLocaleString()} / {(restaurant.raw_review_count || 0).toLocaleString()}
+                        {locale === "zh" ? " 条可信" : "件が信頼"}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex flex-col justify-between gap-4 rounded-[22px] border border-warm-100 bg-[linear-gradient(180deg,#fff,#faf6ef)] p-4">
+                  <div>
+                    <div className="flex items-center gap-2 text-sm font-semibold text-vermilion-700">
+                      <Star size={15} className="fill-gold-500 text-gold-500" />
+                      {locale === "zh" ? "首眼对比字段" : "比較しやすい要点"}
+                    </div>
+                    <ul className="mt-3 space-y-2 text-sm text-ink-700">
+                      <li>{locale === "zh" ? "可信评分优先展示" : "信頼スコアを最上段表示"}</li>
+                      <li>{locale === "zh" ? "Google 评分与评论量同时对照" : "Google評価と件数を同時表示"}</li>
+                      <li>{locale === "zh" ? "区域、菜系、价格带一行可扫读" : "エリア、料理、価格帯を一行比較"}</li>
+                    </ul>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Link
+                      href={`/${locale}/restaurants/${restaurant.id}`}
+                      className="inline-flex w-full items-center justify-center rounded-xl bg-vermilion-700 px-4 py-3 text-sm font-semibold text-white transition hover:bg-vermilion-900"
+                    >
+                      {copy.details}
+                    </Link>
+                    <Link
+                      href={mapHref}
+                      className="inline-flex w-full items-center justify-center rounded-xl border border-warm-200 bg-white px-4 py-3 text-sm font-semibold text-ink-700 transition hover:text-vermilion-700"
+                    >
+                      {copy.map}
+                    </Link>
+                  </div>
+                </div>
+              </article>
+            );
+          })}
+        </section>
       )}
     </div>
   );
+}
+
+function getSceneLabel(scene: DiscoveryScene, locale: string): string {
+  const map = locale === "zh"
+    ? {
+        solo: "一人食",
+        group: "朋友聚餐",
+        "late-night": "深夜可去",
+        budget: "预算友好",
+      }
+    : {
+        solo: "一人ごはん",
+        group: "友人会食",
+        "late-night": "深夜利用",
+        budget: "予算重視",
+      };
+  return map[scene];
+}
+
+function getBusinessLabel(scene: BusinessFilter, locale: string): string {
+  const map = locale === "zh"
+    ? {
+        lunch: "午市可去",
+        dinner: "晚市可去",
+        late: "深夜可去",
+      }
+    : {
+        lunch: "昼営業あり",
+        dinner: "夜営業あり",
+        late: "深夜利用可",
+      };
+  return map[scene];
+}
+
+function getBoardBadge(sort: DiscoverySort, locale: string): string {
+  if (sort === "reviews") return locale === "zh" ? "热度榜在列" : "人気ランキング";
+  if (sort === "newest") return locale === "zh" ? "最近更新" : "最近更新";
+  if (sort === "trusted") return locale === "zh" ? "可信优先" : "信頼優先";
+  return locale === "zh" ? "高分榜在列" : "高評価ランキング";
 }

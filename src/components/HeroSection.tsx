@@ -1,68 +1,48 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { MapPinned, ScanSearch, Search, ShieldCheck, Sparkles } from "lucide-react";
+import Link from "next/link";
+import { MapPinned, Search, ShieldCheck, ShieldQuestion, Sparkles } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 type Props = { locale: string };
-type HeroMode = "search" | "verify";
-
-const AUTH_BADGES = [
-  { type: "authentic", tone: "vermilion" },
-  { type: "adapted", tone: "gold" },
-  { type: "japanese", tone: "blue" },
-];
 
 export default function HeroSection({ locale }: Props) {
   const t = useTranslations("home");
-  const ta = useTranslations("auth_badge");
   const router = useRouter();
   const [query, setQuery] = useState("");
-  const [mode, setMode] = useState<HeroMode>("search");
-  const isVerifyMode = mode === "verify";
 
   const copy = locale === "zh"
     ? {
-        kicker: "AI VERIFIED CHINESE RESTAURANT GUIDE",
-        headline: "东京与关东的真实中国味评鉴",
-        searchTab: "找餐厅",
-        verifyTab: "AI 鉴定",
+        kicker: "TRUSTED CHINESE RESTAURANT GUIDE",
+        headline: "可信评分、榜单推荐、按菜系与区域快速筛选",
         searchPlaceholder: "搜索餐厅、粤菜、茶餐厅、池袋…",
-        verifyPlaceholder: "粘贴 Google Maps 店铺链接",
-        searchButton: "搜索餐厅",
-        verifyButton: "开始鉴定",
-        note: "结合 Google 最新评论、菜系识别与 AI 可信评分",
+        searchButton: "开始找店",
+        rankingButton: "查看本周榜单",
+        note: "先逛榜单、再看区域、最后用筛选缩小范围，减少盲搜和无效点击。",
         scope: "东京 / 关东地区",
         signal: "人工可审的数据体系",
+        trustPoints: ["可信评分", "菜系识别", "人工可审"] as const,
+        hotQueries: ["池袋 川菜", "新宿 粤菜", "上野 一人食"] as const,
       }
     : {
-        kicker: "AI VERIFIED CHINESE RESTAURANT GUIDE",
-        headline: "東京と関東の本格中華を見極める",
-        searchTab: "探す",
-        verifyTab: "AI 鑑定",
+        kicker: "TRUSTED CHINESE RESTAURANT GUIDE",
+        headline: "信頼スコア、ランキング、料理別・エリア別の絞り込みで探す",
         searchPlaceholder: "店名・広東料理・池袋などで検索",
-        verifyPlaceholder: "Google Maps の店舗リンクを貼り付け",
-        searchButton: "検索",
-        verifyButton: "鑑定する",
-        note: "Google の最新レビュー、料理ジャンル、AI 信頼スコアを統合",
+        searchButton: "店を探す",
+        rankingButton: "今週のランキング",
+        note: "先にランキングとエリアから入り、必要な条件だけ絞って判断できる導線です。",
         scope: "東京 / 関東エリア",
         signal: "人が確認できるデータ設計",
+        trustPoints: ["信頼スコア", "料理識別", "人が確認可能"] as const,
+        hotQueries: ["池袋 四川料理", "新宿 広東料理", "上野 一人ごはん"] as const,
       };
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     const trimmed = query.trim();
-    if (!trimmed && isVerifyMode) {
-      router.push(`/${locale}/verify`);
-      return;
-    }
-    if (!trimmed) return;
-
-    const nextPath = isVerifyMode
-      ? `/${locale}/verify?url=${encodeURIComponent(trimmed)}`
-      : `/${locale}/restaurants?q=${encodeURIComponent(trimmed)}`;
-    router.push(nextPath);
+    router.push(trimmed ? `/${locale}/restaurants?q=${encodeURIComponent(trimmed)}` : `/${locale}/restaurants`);
   };
 
   return (
@@ -91,61 +71,47 @@ export default function HeroSection({ locale }: Props) {
           </p>
 
           <form onSubmit={handleSearch} className="hero-command mt-10">
-            <div className="hero-mode-switch" role="tablist" aria-label={locale === "zh" ? "选择操作" : "操作を選択"}>
-              <button
-                type="button"
-                role="tab"
-                aria-selected={mode === "search"}
-                className={mode === "search" ? "is-active" : ""}
-                onClick={() => setMode("search")}
-              >
-                <Search size={15} />
-                {copy.searchTab}
-              </button>
-              <button
-                type="button"
-                role="tab"
-                aria-selected={mode === "verify"}
-                className={mode === "verify" ? "is-active" : ""}
-                onClick={() => setMode("verify")}
-              >
-                <ScanSearch size={15} />
-                {copy.verifyTab}
-              </button>
+            <div className="hero-mode-switch" aria-label={locale === "zh" ? "站点价值" : "サイト価値"}>
+              <span className="inline-flex items-center gap-2 px-3 py-2 text-sm font-semibold text-gold-300">
+                <ShieldCheck size={15} />
+                {locale === "zh" ? "找更值得专程去的中餐馆" : "わざわざ行く価値がある店を探す"}
+              </span>
             </div>
 
             <div className="hero-input-row">
               <div className="relative min-w-0 flex-1">
-                {isVerifyMode ? (
-                  <MapPinned
-                    size={18}
-                    className="absolute left-4 top-1/2 z-10 -translate-y-1/2 text-gold-300/80"
-                  />
-                ) : (
-                  <Search
-                    size={18}
-                    className="absolute left-4 top-1/2 z-10 -translate-y-1/2 text-gold-300/80"
-                  />
-                )}
+                <Search
+                  size={18}
+                  className="absolute left-4 top-1/2 z-10 -translate-y-1/2 text-gold-300/80"
+                />
                 <input
                   type="text"
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
-                  placeholder={isVerifyMode ? copy.verifyPlaceholder : copy.searchPlaceholder}
+                  placeholder={copy.searchPlaceholder}
                   className="hero-search-input"
                 />
               </div>
               <button type="submit" className="hero-submit">
-                {isVerifyMode ? copy.verifyButton : copy.searchButton}
+                {copy.searchButton}
               </button>
+              <Link
+                href={`/${locale}/restaurants?sort=reviews`}
+                className="inline-flex min-h-14 items-center justify-center rounded-md border border-gold-300/45 bg-transparent px-5 text-sm font-semibold text-warm-50 transition hover:bg-white/8"
+              >
+                {copy.rankingButton}
+              </Link>
             </div>
           </form>
 
           <div className="mt-7 flex flex-wrap items-center gap-3">
-            {AUTH_BADGES.map(({ type, tone }) => (
-              <span key={type} className={`hero-cert-badge hero-cert-${tone}`}>
+            {copy.trustPoints.map((point, index) => (
+              <span
+                key={point}
+                className={`hero-cert-badge ${index === 1 ? "hero-cert-gold" : index === 2 ? "hero-cert-blue" : ""}`}
+              >
                 <span className="hero-cert-dot" />
-                {ta(type as "authentic" | "adapted" | "japanese")}
+                {point}
               </span>
             ))}
           </div>
@@ -158,11 +124,32 @@ export default function HeroSection({ locale }: Props) {
             <span className="hidden h-px w-12 bg-gold-300/35 sm:block" />
             <span>{copy.scope}</span>
           </div>
+
+          <div className="mt-8 flex flex-wrap items-center gap-3 text-sm text-warm-100/82">
+            <span className="inline-flex items-center gap-2 font-semibold text-gold-300">
+              <ShieldQuestion size={15} />
+              {locale === "zh" ? "热门搜索" : "人気の探し方"}
+            </span>
+            {copy.hotQueries.map((item) => (
+              <button
+                key={item}
+                type="button"
+                onClick={() => router.push(`/${locale}/restaurants?q=${encodeURIComponent(item)}`)}
+                className="rounded-full border border-white/15 bg-white/8 px-3 py-1.5 text-left transition hover:bg-white/15"
+              >
+                {item}
+              </button>
+            ))}
+            <Link href={`/${locale}/verify`} className="inline-flex items-center gap-2 text-gold-300 hover:text-white">
+              <MapPinned size={15} />
+              {locale === "zh" ? "贴 Google Maps 链接做单店鉴定" : "Google Maps リンクで単店チェック"}
+            </Link>
+          </div>
         </div>
       </div>
 
       <div className="hero-bottom-hint" aria-hidden>
-        <span>{locale === "zh" ? "按菜系找餐厅" : "料理ジャンルから探す"}</span>
+        <span>{locale === "zh" ? "榜单 · 场景 · 区域 · 菜系" : "ランキング・シーン・エリア・料理"}</span>
       </div>
     </section>
   );

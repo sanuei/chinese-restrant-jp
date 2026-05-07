@@ -1,20 +1,23 @@
 {
   "nav": {
     "home": "ホーム",
-    "restaurants": "レストラン",
-    "verify": "鑑定",
+    "rankings": "ランキング",
+    "restaurants": "店を探す",
+    "areas": "エリア",
     "cuisines": "料理ジャンル",
+    "discover": "発見",
+    "verify": "鑑定",
     "map": "マップ",
     "about": "について"
   },
   "home": {
-    "hero_title": "ガチ中華ナビ",
-    "hero_subtitle": "在日中国料理 権威レビューガイド",
-    "hero_tagline": "本物の中華を、あなたの街で。",
+    "hero_title": "わざわざ行く価値のある中華を探す",
+    "hero_subtitle": "信頼スコア、ランキング、料理別・エリア別の絞り込み",
+    "hero_tagline": "ホームで発見し、一覧で比較し、詳細で根拠を確認する。",
     "search_placeholder": "店名・料理ジャンル・エリアで検索…",
     "search_btn": "検索",
     "section_cuisines": "料理ジャンルから探す",
-    "section_top": "東京の人気店",
+    "section_top": "東京の今週ピックアップ",
     "section_new": "最新レビュー"
   },
   "auth_badge": {

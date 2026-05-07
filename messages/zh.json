@@ -1,20 +1,23 @@
 {
   "nav": {
     "home": "首页",
-    "restaurants": "餐厅",
-    "verify": "鉴定",
+    "rankings": "榜单",
+    "restaurants": "找餐厅",
+    "areas": "区域",
     "cuisines": "菜系",
+    "discover": "发现",
+    "verify": "鉴定",
     "map": "地图",
     "about": "关于"
   },
   "home": {
-    "hero_title": "真味中华",
-    "hero_subtitle": "在日中国餐厅权威评鉴",
-    "hero_tagline": "在异乡，让每一口都像回家",
+    "hero_title": "找更值得专程去的中餐馆",
+    "hero_subtitle": "可信评分、榜单推荐、按菜系与区域快速筛选",
+    "hero_tagline": "首页先发现、列表页快比较、详情页看证据。",
     "search_placeholder": "搜索餐厅名称、菜系、地区…",
     "search_btn": "搜索",
     "section_cuisines": "按菜系找餐厅",
-    "section_top": "东京口碑推荐",
+    "section_top": "东京本周精选",
     "section_new": "最近新评价"
   },
   "auth_badge": {
