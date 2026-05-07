@@ -18,10 +18,10 @@ export async function generateStaticParams() {
 export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
   const { locale } = await params;
   const isZh = locale === "zh";
-  const siteName = isZh ? "真味中华" : "ガチ中華ナビ";
+  const siteName = "味探";
   const title = isZh
-    ? "真味中华 - 东京ガチ中華与中国餐厅评鉴"
-    : "ガチ中華ナビ - 東京の本格中華ガイド";
+    ? "味探 - 东京ガチ中華与中国餐厅指南"
+    : "味探 - 東京の本格中華レストランガイド";
   const description = isZh
     ? "按菜系、地区、可信评分寻找东京和关东的ガチ中華。支持 Google Maps 链接 AI 鉴定餐厅。"
     : "東京・関東のガチ中華を料理ジャンル、エリア、信頼スコアで探せるAIレストランガイド。";
@@ -44,7 +44,7 @@ export async function generateMetadata({ params }: { params: Promise<{ locale: s
       title,
       description,
       url: `/${locale}`,
-      siteName: "ガチ中華ナビ | 真味中华",
+      siteName,
       locale: isZh ? "zh_CN" : "ja_JP",
       alternateLocale: isZh ? "ja_JP" : "zh_CN",
       type: "website",

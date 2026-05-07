@@ -11,8 +11,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return {
     title: locale === "zh" ? "联系方式" : "お問い合わせ",
     description: locale === "zh"
-      ? "联系真味中华，提交餐厅线索、数据修正和合作建议。"
-      : "ガチ中華ナビへのお問い合わせ、店舗情報の修正、掲載相談はこちら。",
+      ? "联系味探，提交餐厅线索、数据修正和合作建议。"
+      : "味探へのお問い合わせ、店舗情報の修正、掲載相談はこちら。",
     alternates: {
       canonical: `/${locale}/contact`,
       languages: {
@@ -29,7 +29,7 @@ export default async function ContactPage({ params }: Props) {
   const isZh = locale === "zh";
   const copy = isZh
     ? {
-        eyebrow: "联系真味中华",
+        eyebrow: "联系味探",
         title: "餐厅线索、数据修正和合作联系",
         lead: "如果你发现餐厅信息不准确、想推荐一家真正值得收录的店，或者有合作想法，可以直接发邮件给我。",
         emailLabel: "联系邮箱",
