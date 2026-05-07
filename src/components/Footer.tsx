@@ -5,6 +5,7 @@ type Props = { locale: string };
 
 export default function Footer({ locale }: Props) {
   const t = useTranslations("footer");
+  const brandName = "味探";
   
   return (
     <footer className="bg-white border-t py-12 mt-20" style={{ borderTopColor: "var(--color-warm-200)" }}>
@@ -14,7 +15,7 @@ export default function Footer({ locale }: Props) {
             <Link href={`/${locale}`} className="flex items-center gap-2">
               <span className="text-2xl">🍜</span>
               <span className="font-serif font-black text-lg" style={{ color: "var(--color-vermilion-700)" }}>
-                {locale === "zh" ? "真味中华" : "ガチ中華ナビ"}
+                {brandName}
               </span>
             </Link>
             <p className="text-xs max-w-md text-center md:text-left" style={{ color: "var(--color-ink-400)" }}>
@@ -36,7 +37,7 @@ export default function Footer({ locale }: Props) {
         </div>
         
         <div className="mt-8 pt-8 border-t text-center text-xs" style={{ borderTopColor: "var(--color-warm-100)", color: "var(--color-ink-400)" }}>
-          © {new Date().getFullYear()} {locale === "zh" ? "真味中华" : "ガチ中華ナビ"}. All rights reserved.
+          © {new Date().getFullYear()} {brandName}. All rights reserved.
         </div>
       </div>
     </footer>
