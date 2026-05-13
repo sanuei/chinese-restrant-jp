@@ -21,7 +21,7 @@ interface Restaurant {
   id: string; name_zh: string; name_ja: string; name_original: string;
   address: string; city: string; ward: string; lat: number; lng: number;
   phone: string; website: string; google_maps_url: string;
-  price_level: number; value_score: number; cuisine_type: string; cuisine_confidence: number;
+  price_level: number | null; price_level_source: string | null; value_score: number; cuisine_type: string; cuisine_confidence: number;
   authenticity: string; authenticity_score: number;
   authenticity_reason_zh: string; authenticity_reason_ja: string;
   raw_rating: number; trusted_rating: number; raw_review_count: number;
@@ -50,7 +50,7 @@ export default function EditRestaurantPage({ params }: { params: Promise<{ id: s
     address: "", city: "tokyo", ward: "",
     lat: "", lng: "",
     phone: "", website: "", google_maps_url: "",
-    price_level: "2", value_score: "", cuisine_type: "other", cuisine_confidence: "0",
+    price_level: "", value_score: "", cuisine_type: "other", cuisine_confidence: "0",
     authenticity: "unknown", authenticity_score: "0",
     authenticity_reason_zh: "", authenticity_reason_ja: "",
     raw_rating: "", trusted_rating: "",
@@ -80,7 +80,7 @@ export default function EditRestaurantPage({ params }: { params: Promise<{ id: s
         address: r.address || "", city: r.city || "tokyo", ward: r.ward || "",
         lat: String(r.lat || ""), lng: String(r.lng || ""),
         phone: r.phone || "", website: r.website || "", google_maps_url: r.google_maps_url || "",
-        price_level: String(r.price_level || "2"),
+        price_level: r.price_level ? String(r.price_level) : "",
         value_score: String(r.value_score || ""),
         cuisine_type: r.cuisine_type || "other",
         cuisine_confidence: String(r.cuisine_confidence || "0"),
@@ -262,7 +262,7 @@ export default function EditRestaurantPage({ params }: { params: Promise<{ id: s
                 <input id="address" value={form.address} onChange={e => setForm(f => ({ ...f, address: e.target.value }))}
                   className="field-input" />
               </Field>
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-2 gap-3">
                 <Field label="城市" id="city">
                   <input id="city" value={form.city} onChange={e => setForm(f => ({ ...f, city: e.target.value }))}
                     className="field-input" />
@@ -274,6 +274,7 @@ export default function EditRestaurantPage({ params }: { params: Promise<{ id: s
                 <Field label="价格等级" id="price_level">
                   <select id="price_level" value={form.price_level} onChange={e => setForm(f => ({ ...f, price_level: e.target.value }))}
                     className="field-input">
+                    <option value="">未确认</option>
                     <option value="1">$ (低价)</option>
                     <option value="2">$$ (中等)</option>
                     <option value="3">$$$ (较高)</option>

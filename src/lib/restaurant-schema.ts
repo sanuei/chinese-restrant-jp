@@ -18,12 +18,14 @@ type RestaurantBackfillRow = {
   authenticity_reason_ja: string | null;
   trusted_rating: number | null;
   price_level: number | null;
+  price_level_source: string | null;
   raw_review_count: number | null;
   value_score: number | null;
 } & Partial<Record<(typeof SEARCH_SHADOW_FIELDS)[number], string | null>>;
 
 const RESTAURANT_COLUMN_DEFS: Record<string, string> = {
   value_score: "INTEGER",
+  price_level_source: "TEXT",
   name_zh_search: "TEXT",
   name_ja_search: "TEXT",
   name_original_search: "TEXT",
@@ -69,6 +71,7 @@ export async function ensureAppSchema(db: D1Database): Promise<void> {
     "authenticity_reason_ja",
     "trusted_rating",
     "price_level",
+    "price_level_source",
     "raw_review_count",
     "value_score",
     ...SEARCH_SHADOW_FIELDS,

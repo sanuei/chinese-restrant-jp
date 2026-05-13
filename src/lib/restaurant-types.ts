@@ -30,6 +30,7 @@ export interface RestaurantRow {
   website: string | null;
   google_maps_url: string | null;
   price_level: number | null;
+  price_level_source: string | null;
   value_score: number | null;
   cuisine_type: string | null;
   cuisine_confidence: number | null;
@@ -89,6 +90,13 @@ export function normalizeAuthenticity(value: string | null | undefined): Authent
 
 export function normalizePriceLevel(value: number | null | undefined): PriceLevel | null {
   return value === 1 || value === 2 || value === 3 || value === 4 ? value : null;
+}
+
+export function getVerifiedPriceLevel(
+  value: number | null | undefined,
+  source: string | null | undefined
+): PriceLevel | null {
+  return source ? normalizePriceLevel(value) : null;
 }
 
 export function getRestaurantName(restaurant: RestaurantRow, locale: string): string {

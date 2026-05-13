@@ -15,7 +15,8 @@ CREATE TABLE IF NOT EXISTS restaurants (
   phone TEXT,
   website TEXT,
   google_maps_url TEXT,
-  price_level INTEGER DEFAULT 2,          -- 1-4（$ ~ $$$$）
+  price_level INTEGER,                    -- 1-4（$ ~ $$$$），NULL 表示未确认
+  price_level_source TEXT,                -- google / manual，NULL 表示未确认
   value_score INTEGER,                    -- 性价比 0-100
   cuisine_type TEXT DEFAULT 'other',      -- sichuan/cantonese/northern/fujian/hunan/jiangsu/northwest/yunnan/other
   cuisine_confidence INTEGER DEFAULT 0,   -- AI菜系判断置信度 0-100

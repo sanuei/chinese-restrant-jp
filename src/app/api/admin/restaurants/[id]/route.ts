@@ -55,6 +55,12 @@ export async function PUT(req: NextRequest, { params }: RouteParams) {
       opening_hours, photos, is_active,
     } = body;
 
+    const hasPriceLevel = Object.hasOwn(body, "price_level");
+    const nextPriceLevel = hasPriceLevel ? price_level ?? null : existing.price_level;
+    const nextPriceLevelSource = hasPriceLevel
+      ? (price_level ? "manual" : null)
+      : existing.price_level_source;
+
     const effectiveRestaurant: RestaurantRow = {
       ...existing,
       name_zh: name_zh ?? existing.name_zh,
@@ -68,7 +74,8 @@ export async function PUT(req: NextRequest, { params }: RouteParams) {
       phone: phone ?? existing.phone,
       website: website ?? existing.website,
       google_maps_url: google_maps_url ?? existing.google_maps_url,
-      price_level: price_level ?? existing.price_level,
+      price_level: nextPriceLevel,
+      price_level_source: nextPriceLevelSource,
       cuisine_type: cuisine_type ?? existing.cuisine_type,
       cuisine_confidence: cuisine_confidence ?? existing.cuisine_confidence,
       authenticity: authenticity ?? existing.authenticity,
@@ -120,7 +127,8 @@ export async function PUT(req: NextRequest, { params }: RouteParams) {
         phone = ?,
         website = ?,
         google_maps_url = ?,
-        price_level = COALESCE(?, price_level),
+        price_level = ?,
+        price_level_source = ?,
         value_score = ?,
         cuisine_type = COALESCE(?, cuisine_type),
         cuisine_confidence = COALESCE(?, cuisine_confidence),
@@ -151,7 +159,7 @@ export async function PUT(req: NextRequest, { params }: RouteParams) {
     `).bind(
       name_zh ?? null, name_ja ?? null, name_original ?? null, address ?? null, city ?? null, ward ?? null,
       lat ?? null, lng ?? null, phone ?? null, website ?? null, google_maps_url ?? null,
-      price_level ?? null, nextValueScore, cuisine_type ?? null, cuisine_confidence ?? null,
+      nextPriceLevel, nextPriceLevelSource, nextValueScore, cuisine_type ?? null, cuisine_confidence ?? null,
       authenticity ?? null, authenticity_score ?? null,
       authenticity_reason_zh ?? null, authenticity_reason_ja ?? null,
       raw_rating ?? null, trusted_rating ?? null,

@@ -92,6 +92,7 @@ function computeTrustedRating(
 const CUISINE_TYPES = new Set(["sichuan", "cantonese", "northern", "fujian", "hunan", "jiangsu", "northwest", "yunnan", "other"]);
 const AUTHENTICITY_TYPES = new Set(["authentic", "adapted", "japanese", "unknown"]);
 const CREDIBILITY_ACTIONS = new Set(["keep", "flag", "remove"]);
+const PRICE_LEVELS = new Set([1, 2, 3, 4]);
 
 function clampScore(value: unknown, fallback = 50): number {
   const score = Number(value);
@@ -120,6 +121,10 @@ function normalizeAiAnalysis(value: RestaurantAiAnalysisResult | null | undefine
       credibility_reason: review.credibility_reason || "AI未给出理由",
     })),
   };
+}
+
+function normalizeGooglePriceLevel(value: number | null | undefined): number | null {
+  return PRICE_LEVELS.has(value || 0) ? value || null : null;
 }
 
 function getReviewAnalysis(results: RestaurantAiReviewResult[], index: number): RestaurantAiReviewResult {
@@ -163,7 +168,7 @@ export async function buildRestaurantSyncSnapshot(placeId: string): Promise<Rest
       address: place.formatted_address,
       rating: place.rating || 0,
       reviewCount: place.user_ratings_total || 0,
-      priceLevel: place.price_level || null,
+      priceLevel: normalizeGooglePriceLevel(place.price_level),
       reviews: reviewsWithText.map((review) => ({
         text: review.text,
         rating: review.rating,
@@ -223,7 +228,9 @@ export async function saveRestaurantSyncSnapshot(
     .prepare("SELECT name_zh, name_ja FROM restaurants WHERE id = ?")
     .bind(place.place_id)
     .first<{ name_zh: string | null; name_ja: string | null }>();
-  const valueScore = computeValueScore(snapshot.trustedRating, place.price_level || 2, place.user_ratings_total || 0);
+  const priceLevel = normalizeGooglePriceLevel(place.price_level);
+  const priceLevelSource = priceLevel ? "google" : null;
+  const valueScore = computeValueScore(snapshot.trustedRating, priceLevel, place.user_ratings_total || 0);
   const searchShadows = buildRestaurantSearchShadows({
     name_zh: existingRestaurant?.name_zh || null,
     name_ja: existingRestaurant?.name_ja || null,
@@ -238,7 +245,7 @@ export async function saveRestaurantSyncSnapshot(
 
   await db.prepare(`
     INSERT INTO restaurants (
-      id, name_original, address, city, ward, lat, lng, phone, website, google_maps_url, price_level,
+      id, name_original, address, city, ward, lat, lng, phone, website, google_maps_url, price_level, price_level_source,
       value_score,
       cuisine_type, cuisine_confidence, authenticity, authenticity_score,
       authenticity_reason_zh, authenticity_reason_ja,
@@ -259,6 +266,7 @@ export async function saveRestaurantSyncSnapshot(
       website = excluded.website,
       google_maps_url = excluded.google_maps_url,
       price_level = excluded.price_level,
+      price_level_source = excluded.price_level_source,
       value_score = excluded.value_score,
       cuisine_type = excluded.cuisine_type,
       cuisine_confidence = excluded.cuisine_confidence,
@@ -295,7 +303,8 @@ export async function saveRestaurantSyncSnapshot(
     place.formatted_phone_number || null,
     place.website || null,
     place.url || null,
-    place.price_level || 2,
+    priceLevel,
+    priceLevelSource,
     valueScore,
     aiAnalysis.cuisine_type,
     aiAnalysis.cuisine_confidence,

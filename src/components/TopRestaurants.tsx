@@ -6,9 +6,9 @@ import {
   getRating,
   getRestaurantName,
   getRestaurantSummary,
+  getVerifiedPriceLevel,
   normalizeAuthenticity,
   normalizeCuisineType,
-  normalizePriceLevel,
   parsePhotoReferences,
   type RestaurantRow,
 } from "@/lib/restaurant-types";
@@ -60,7 +60,7 @@ export default async function TopRestaurants({ locale }: { locale: string }) {
           const summary = getRestaurantSummary(restaurant, locale);
           const authenticity = normalizeAuthenticity(restaurant.authenticity);
           const cuisineType = normalizeCuisineType(restaurant.cuisine_type);
-          const priceLevel = normalizePriceLevel(restaurant.price_level);
+          const priceLevel = getVerifiedPriceLevel(restaurant.price_level, restaurant.price_level_source);
           
           let photoUrl = "https://images.unsplash.com/photo-1563245372-f21724e3856d?q=80&w=600&auto=format&fit=crop";
           const photos = parsePhotoReferences(restaurant.photos);
