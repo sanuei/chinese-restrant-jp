@@ -26,3 +26,16 @@ export async function verifyAdminPassword(password: string): Promise<boolean> {
   const expected = getAdminPassword();
   return Boolean(expected) && password === expected;
 }
+
+export async function verifyAdminRequest(req: {
+  headers: { get(name: string): string | null };
+  cookies: { get(name: string): { value: string } | undefined };
+}): Promise<boolean> {
+  const expectedSession = await getExpectedAdminSessionValue();
+  const session = req.cookies.get(getAdminSessionCookieName())?.value;
+  if (session && session === expectedSession) return true;
+
+  const adminSecret = process.env.ADMIN_SECRET || "";
+  const authHeader = req.headers.get("authorization");
+  return Boolean(adminSecret) && authHeader === `Bearer ${adminSecret}`;
+}

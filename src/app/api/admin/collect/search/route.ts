@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { verifyAdminRequest } from "@/lib/admin-auth";
 import { getDb } from "@/lib/cloudflare";
 
 type SearchBody = {
@@ -96,8 +97,7 @@ async function markExistingCandidates(candidates: Candidate[]): Promise<Candidat
 }
 
 export async function POST(req: NextRequest) {
-  const authHeader = req.headers.get("authorization");
-  if (authHeader !== `Bearer ${process.env.ADMIN_SECRET}`) {
+  if (!(await verifyAdminRequest(req))) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

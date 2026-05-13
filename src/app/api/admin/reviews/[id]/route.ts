@@ -1,13 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
+import { verifyAdminRequest } from "@/lib/admin-auth";
 import { getDb } from "@/lib/cloudflare";
-
-function authCheck(req: NextRequest): boolean {
-  return req.headers.get("authorization") === `Bearer ${process.env.ADMIN_SECRET}`;
-}
 
 // PATCH /api/admin/reviews/[id] — 更新单条评论（credibility_action, credibility_score）
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  if (!authCheck(req)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!(await verifyAdminRequest(req))) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   try {
     const { id } = await params;
     const body = await req.json();
@@ -39,7 +36,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
 // DELETE /api/admin/reviews/[id] — 删除评论
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  if (!authCheck(req)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!(await verifyAdminRequest(req))) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   try {
     const { id } = await params;
     const db = await getDb();

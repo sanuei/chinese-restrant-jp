@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { verifyAdminRequest } from "@/lib/admin-auth";
 import { getDb } from "@/lib/cloudflare";
 import { computeValueScore } from "@/lib/restaurant-metrics";
 import { buildRestaurantSearchShadows } from "@/lib/restaurant-search-index";
@@ -6,13 +7,9 @@ import type { RestaurantRow } from "@/lib/restaurant-types";
 
 interface RouteParams { params: Promise<{ id: string }> }
 
-function authCheck(req: NextRequest): boolean {
-  return req.headers.get("authorization") === `Bearer ${process.env.ADMIN_SECRET}`;
-}
-
 // GET /api/admin/restaurants/[id]
 export async function GET(req: NextRequest, { params }: RouteParams) {
-  if (!authCheck(req)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!(await verifyAdminRequest(req))) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   try {
     const { id } = await params;
     const db = await getDb();
@@ -34,7 +31,7 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
 
 // PUT /api/admin/restaurants/[id] — 更新餐厅所有字段
 export async function PUT(req: NextRequest, { params }: RouteParams) {
-  if (!authCheck(req)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!(await verifyAdminRequest(req))) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   try {
     const { id } = await params;
     const body = await req.json();
@@ -188,7 +185,7 @@ export async function PUT(req: NextRequest, { params }: RouteParams) {
 
 // DELETE /api/admin/restaurants/[id] — 软删除（is_active = 0）
 export async function DELETE(req: NextRequest, { params }: RouteParams) {
-  if (!authCheck(req)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!(await verifyAdminRequest(req))) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   try {
     const { id } = await params;
     const db = await getDb();

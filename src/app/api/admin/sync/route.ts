@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { verifyAdminRequest } from "@/lib/admin-auth";
 import { syncRestaurantByPlaceId } from "@/lib/restaurant-sync";
 
 interface SyncRequestBody {
@@ -6,8 +7,7 @@ interface SyncRequestBody {
 }
 
 export async function POST(req: NextRequest) {
-  const authHeader = req.headers.get("authorization");
-  if (authHeader !== `Bearer ${process.env.ADMIN_SECRET}`) {
+  if (!(await verifyAdminRequest(req))) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

@@ -80,10 +80,6 @@ function splitList(value: string): string[] {
   return value.split(",").map((item) => item.trim()).filter(Boolean);
 }
 
-function getAdminToken(): string {
-  return process.env.NEXT_PUBLIC_ADMIN_TOKEN || "";
-}
-
 function addCandidates(map: Map<string, Candidate>, incoming: Candidate[]) {
   for (const candidate of incoming) {
     const existing = map.get(candidate.placeId);
@@ -230,7 +226,6 @@ export default function AdminCollectPage() {
         signal: controller.signal,
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${getAdminToken()}`,
         },
         body: JSON.stringify({
           areas: [area],
@@ -310,7 +305,6 @@ export default function AdminCollectPage() {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${getAdminToken()}`,
       },
       body: JSON.stringify({ place_id: placeId }),
     });
@@ -400,9 +394,7 @@ export default function AdminCollectPage() {
     setLogs([]);
     setStatus("读取已有餐厅...");
     try {
-      const response = await fetch(`/api/admin/restaurants?pageSize=100&sort=newest`, {
-        headers: { Authorization: `Bearer ${getAdminToken()}` },
-      });
+      const response = await fetch(`/api/admin/restaurants?pageSize=100&sort=newest`);
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.error || "读取已有餐厅失败");
       const restaurants = (payload.data || []).slice(0, count) as Restaurant[];

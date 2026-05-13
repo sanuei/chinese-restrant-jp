@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
+import { verifyAdminRequest } from "@/lib/admin-auth";
 import { getDb } from "@/lib/cloudflare";
 import { buildRestaurantSearchClause } from "@/lib/restaurant-search";
 import type { RestaurantRow } from "@/lib/restaurant-types";
 
 // GET /api/admin/restaurants — 列表，支持搜索/筛选/分页
 export async function GET(req: NextRequest) {
-  const authHeader = req.headers.get("authorization");
-  if (authHeader !== `Bearer ${process.env.ADMIN_SECRET}`) {
+  if (!(await verifyAdminRequest(req))) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -83,8 +83,7 @@ export async function GET(req: NextRequest) {
 
 // POST /api/admin/restaurants — 手动新增（占位，暂时只支持通过 sync 同步）
 export async function POST(req: NextRequest) {
-  const authHeader = req.headers.get("authorization");
-  if (authHeader !== `Bearer ${process.env.ADMIN_SECRET}`) {
+  if (!(await verifyAdminRequest(req))) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   return NextResponse.json({ error: "Use POST /api/admin/sync to add restaurants" }, { status: 400 });
