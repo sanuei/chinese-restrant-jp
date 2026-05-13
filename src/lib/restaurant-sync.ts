@@ -1,5 +1,7 @@
 import { getDb } from "@/lib/cloudflare";
 import { getPlaceDetails, type GooglePlaceResult } from "@/lib/google-maps";
+import { computeValueScore } from "@/lib/restaurant-metrics";
+import { buildRestaurantSearchShadows } from "@/lib/restaurant-search-index";
 import {
   analyzeRestaurantSnapshot,
   type RestaurantAiAnalysisResult,
@@ -217,15 +219,35 @@ export async function saveRestaurantSyncSnapshot(
   const db = await getDb();
   const { place, aiAnalysis } = snapshot;
   const isActive = options.isActive ?? null;
+  const existingRestaurant = await db
+    .prepare("SELECT name_zh, name_ja FROM restaurants WHERE id = ?")
+    .bind(place.place_id)
+    .first<{ name_zh: string | null; name_ja: string | null }>();
+  const valueScore = computeValueScore(snapshot.trustedRating, place.price_level || 2, place.user_ratings_total || 0);
+  const searchShadows = buildRestaurantSearchShadows({
+    name_zh: existingRestaurant?.name_zh || null,
+    name_ja: existingRestaurant?.name_ja || null,
+    name_original: place.name,
+    address: place.formatted_address,
+    ward: snapshot.area,
+    ai_summary_zh: aiAnalysis.ai_summary_zh,
+    ai_summary_ja: aiAnalysis.ai_summary_ja,
+    authenticity_reason_zh: aiAnalysis.authenticity_reason_zh,
+    authenticity_reason_ja: aiAnalysis.authenticity_reason_ja,
+  });
 
   await db.prepare(`
     INSERT INTO restaurants (
       id, name_original, address, city, ward, lat, lng, phone, website, google_maps_url, price_level,
+      value_score,
       cuisine_type, cuisine_confidence, authenticity, authenticity_score,
       authenticity_reason_zh, authenticity_reason_ja,
       raw_rating, trusted_rating, raw_review_count, trusted_review_count,
-      ai_summary_zh, ai_summary_ja, photos, is_active, last_synced_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, COALESCE(?, 1), datetime('now'))
+      ai_summary_zh, ai_summary_ja,
+      name_zh_search, name_ja_search, name_original_search, address_search, ward_search,
+      ai_summary_zh_search, ai_summary_ja_search, authenticity_reason_zh_search, authenticity_reason_ja_search,
+      photos, is_active, last_synced_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, COALESCE(?, 1), datetime('now'))
     ON CONFLICT(id) DO UPDATE SET
       name_original = excluded.name_original,
       address = excluded.address,
@@ -237,6 +259,7 @@ export async function saveRestaurantSyncSnapshot(
       website = excluded.website,
       google_maps_url = excluded.google_maps_url,
       price_level = excluded.price_level,
+      value_score = excluded.value_score,
       cuisine_type = excluded.cuisine_type,
       cuisine_confidence = excluded.cuisine_confidence,
       authenticity = excluded.authenticity,
@@ -249,6 +272,15 @@ export async function saveRestaurantSyncSnapshot(
       trusted_review_count = excluded.trusted_review_count,
       ai_summary_zh = excluded.ai_summary_zh,
       ai_summary_ja = excluded.ai_summary_ja,
+      name_zh_search = excluded.name_zh_search,
+      name_ja_search = excluded.name_ja_search,
+      name_original_search = excluded.name_original_search,
+      address_search = excluded.address_search,
+      ward_search = excluded.ward_search,
+      ai_summary_zh_search = excluded.ai_summary_zh_search,
+      ai_summary_ja_search = excluded.ai_summary_ja_search,
+      authenticity_reason_zh_search = excluded.authenticity_reason_zh_search,
+      authenticity_reason_ja_search = excluded.authenticity_reason_ja_search,
       photos = excluded.photos,
       is_active = COALESCE(?, restaurants.is_active),
       last_synced_at = excluded.last_synced_at
@@ -264,6 +296,7 @@ export async function saveRestaurantSyncSnapshot(
     place.website || null,
     place.url || null,
     place.price_level || 2,
+    valueScore,
     aiAnalysis.cuisine_type,
     aiAnalysis.cuisine_confidence,
     aiAnalysis.authenticity,
@@ -276,6 +309,15 @@ export async function saveRestaurantSyncSnapshot(
     snapshot.trustedReviewCount,
     aiAnalysis.ai_summary_zh,
     aiAnalysis.ai_summary_ja,
+    searchShadows.name_zh_search,
+    searchShadows.name_ja_search,
+    searchShadows.name_original_search,
+    searchShadows.address_search,
+    searchShadows.ward_search,
+    searchShadows.ai_summary_zh_search,
+    searchShadows.ai_summary_ja_search,
+    searchShadows.authenticity_reason_zh_search,
+    searchShadows.authenticity_reason_ja_search,
     JSON.stringify(place.photos?.map((photo) => photo.photo_reference) || []),
     isActive,
     isActive

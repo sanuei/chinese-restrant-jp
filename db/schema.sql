@@ -16,6 +16,7 @@ CREATE TABLE IF NOT EXISTS restaurants (
   website TEXT,
   google_maps_url TEXT,
   price_level INTEGER DEFAULT 2,          -- 1-4（$ ~ $$$$）
+  value_score INTEGER,                    -- 性价比 0-100
   cuisine_type TEXT DEFAULT 'other',      -- sichuan/cantonese/northern/fujian/hunan/jiangsu/northwest/yunnan/other
   cuisine_confidence INTEGER DEFAULT 0,   -- AI菜系判断置信度 0-100
   authenticity TEXT DEFAULT 'unknown',    -- authentic / adapted / japanese / unknown
@@ -28,6 +29,15 @@ CREATE TABLE IF NOT EXISTS restaurants (
   trusted_review_count INTEGER DEFAULT 0, -- 过滤后真实评论数
   ai_summary_zh TEXT,                     -- AI 中文摘要（JSON）
   ai_summary_ja TEXT,                     -- AI 日文摘要（JSON）
+  name_zh_search TEXT,                    -- 简繁归一化搜索影子字段
+  name_ja_search TEXT,
+  name_original_search TEXT,
+  address_search TEXT,
+  ward_search TEXT,
+  ai_summary_zh_search TEXT,
+  ai_summary_ja_search TEXT,
+  authenticity_reason_zh_search TEXT,
+  authenticity_reason_ja_search TEXT,
   ai_summary_updated_at TEXT,
   opening_hours TEXT,                     -- JSON 格式营业时间
   photos TEXT,                            -- JSON 格式照片 URL 列表

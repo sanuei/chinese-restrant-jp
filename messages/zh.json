@@ -40,6 +40,8 @@
     "reviews": "条评论",
     "trusted_reviews": "条真实评论",
     "filtered": "已过滤 {count} 条低可信评论",
+    "value_score": "性价比",
+    "open_in_google_maps": "打开 Google 地图",
     "price_level": {
       "1": "¥ 实惠",
       "2": "¥¥ 适中",

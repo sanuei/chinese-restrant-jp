@@ -21,7 +21,7 @@ interface Restaurant {
   id: string; name_zh: string; name_ja: string; name_original: string;
   address: string; city: string; ward: string; lat: number; lng: number;
   phone: string; website: string; google_maps_url: string;
-  price_level: number; cuisine_type: string; cuisine_confidence: number;
+  price_level: number; value_score: number; cuisine_type: string; cuisine_confidence: number;
   authenticity: string; authenticity_score: number;
   authenticity_reason_zh: string; authenticity_reason_ja: string;
   raw_rating: number; trusted_rating: number; raw_review_count: number;
@@ -50,7 +50,7 @@ export default function EditRestaurantPage({ params }: { params: Promise<{ id: s
     address: "", city: "tokyo", ward: "",
     lat: "", lng: "",
     phone: "", website: "", google_maps_url: "",
-    price_level: "2", cuisine_type: "other", cuisine_confidence: "0",
+    price_level: "2", value_score: "", cuisine_type: "other", cuisine_confidence: "0",
     authenticity: "unknown", authenticity_score: "0",
     authenticity_reason_zh: "", authenticity_reason_ja: "",
     raw_rating: "", trusted_rating: "",
@@ -81,6 +81,7 @@ export default function EditRestaurantPage({ params }: { params: Promise<{ id: s
         lat: String(r.lat || ""), lng: String(r.lng || ""),
         phone: r.phone || "", website: r.website || "", google_maps_url: r.google_maps_url || "",
         price_level: String(r.price_level || "2"),
+        value_score: String(r.value_score || ""),
         cuisine_type: r.cuisine_type || "other",
         cuisine_confidence: String(r.cuisine_confidence || "0"),
         authenticity: r.authenticity || "unknown",
@@ -124,6 +125,7 @@ export default function EditRestaurantPage({ params }: { params: Promise<{ id: s
         website: form.website || null,
         google_maps_url: form.google_maps_url || null,
         price_level: form.price_level ? parseInt(form.price_level) : null,
+        value_score: form.value_score ? parseInt(form.value_score) : null,
         cuisine_type: form.cuisine_type || null,
         cuisine_confidence: form.cuisine_confidence ? parseInt(form.cuisine_confidence) : null,
         authenticity: form.authenticity || null,
@@ -277,6 +279,11 @@ export default function EditRestaurantPage({ params }: { params: Promise<{ id: s
                     <option value="3">$$$ (较高)</option>
                     <option value="4">$$$$ (高价)</option>
                   </select>
+                </Field>
+                <Field label="性价比分" id="value_score">
+                  <input id="value_score" value={form.value_score}
+                    onChange={e => setForm(f => ({ ...f, value_score: e.target.value }))}
+                    className="field-input" type="number" min="0" max="100" />
                 </Field>
               </div>
             </Section>

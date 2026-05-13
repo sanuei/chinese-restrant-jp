@@ -1,4 +1,5 @@
 import { type CuisineType } from "@/lib/restaurant-types";
+import { expandSearchVariants, SEARCH_SHADOW_FIELDS } from "@/lib/restaurant-search-index";
 
 type SearchClause = {
   condition: string;
@@ -84,9 +85,21 @@ export function buildRestaurantSearchClause(query: string): SearchClause | null 
   const conditions: string[] = [];
   const binds: string[] = [];
   const likeValue = `%${trimmed}%`;
+  const normalizedQueryVariants = expandSearchVariants(trimmed);
 
   conditions.push(`(${SEARCH_COLUMNS.map((column) => `${column} LIKE ?`).join(" OR ")})`);
   binds.push(...SEARCH_COLUMNS.map(() => likeValue));
+
+  if (normalizedQueryVariants.length > 0) {
+    const normalizedConditions = normalizedQueryVariants.map(
+      () => `(${SEARCH_SHADOW_FIELDS.map((column) => `${column} LIKE ?`).join(" OR ")})`
+    );
+    conditions.push(`(${normalizedConditions.join(" OR ")})`);
+    for (const variant of normalizedQueryVariants) {
+      const normalizedLikeValue = `%${variant}%`;
+      binds.push(...SEARCH_SHADOW_FIELDS.map(() => normalizedLikeValue));
+    }
+  }
 
   const cuisines = getCuisineTypesForSearchQuery(trimmed);
   if (cuisines.length > 0) {

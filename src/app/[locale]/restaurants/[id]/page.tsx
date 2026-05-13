@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { Star, MapPin, Phone, Globe, ShieldCheck, ShieldAlert, MapPinned } from "lucide-react";
+import { Star, MapPin, Phone, Globe, ShieldCheck, ShieldAlert, MapPinned, ExternalLink } from "lucide-react";
 import RatingExplainer from "@/components/RatingExplainer";
 import {
   getRating,
@@ -86,6 +86,7 @@ export default async function RestaurantDetailPage({ params }: Props) {
   const authenticityReason = locale === "zh" ? restaurant.authenticity_reason_zh : restaurant.authenticity_reason_ja;
   const authenticity = normalizeAuthenticity(restaurant.authenticity);
   const cuisineType = normalizeCuisineType(restaurant.cuisine_type);
+  const googleMapsHref = restaurant.google_maps_url || `https://www.google.com/maps/place/?q=place_id:${restaurant.id}`;
   
   const rawPhotos = parsePhotoReferences(restaurant.photos).slice(0, 5);
   const photos = rawPhotos.map((ref) =>
@@ -151,6 +152,12 @@ export default async function RestaurantDetailPage({ params }: Props) {
               <div className="flex items-center gap-1.5 text-ink-400">
                 <span className="line-through opacity-70">Google: {(restaurant.raw_rating || 0).toFixed(1)}</span>
               </div>
+
+              {typeof restaurant.value_score === "number" && (
+                <div className="rounded-full bg-gold-50 px-3 py-1 font-semibold text-gold-700">
+                  {t("value_score")} {restaurant.value_score}
+                </div>
+              )}
             </div>
           </div>
 
@@ -230,6 +237,15 @@ export default async function RestaurantDetailPage({ params }: Props) {
               <MapPinned size={16} />
               {locale === "zh" ? "在地图中查看" : "地図で見る"}
             </Link>
+            <a
+              href={googleMapsHref}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mb-5 inline-flex w-full items-center justify-center gap-2 rounded-md border border-warm-200 bg-white px-4 py-2.5 text-sm font-semibold text-ink-700 transition-colors hover:text-vermilion-700"
+            >
+              <ExternalLink size={16} />
+              {t("open_in_google_maps")}
+            </a>
             
             <ul className="flex flex-col gap-4 text-sm text-ink-700">
               <li className="flex gap-3">

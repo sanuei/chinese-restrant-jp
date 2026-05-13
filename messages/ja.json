@@ -40,6 +40,8 @@
     "reviews": "件のレビュー",
     "trusted_reviews": "件の信頼レビュー",
     "filtered": "{count}件の低信頼レビューをフィルタ済み",
+    "value_score": "コスパ",
+    "open_in_google_maps": "Googleマップで開く",
     "price_level": {
       "1": "¥ お手頃",
       "2": "¥¥ 普通",

@@ -30,6 +30,7 @@ export interface RestaurantRow {
   website: string | null;
   google_maps_url: string | null;
   price_level: number | null;
+  value_score: number | null;
   cuisine_type: string | null;
   cuisine_confidence: number | null;
   authenticity: string | null;
@@ -42,6 +43,15 @@ export interface RestaurantRow {
   trusted_review_count: number | null;
   ai_summary_zh: string | null;
   ai_summary_ja: string | null;
+  name_zh_search: string | null;
+  name_ja_search: string | null;
+  name_original_search: string | null;
+  address_search: string | null;
+  ward_search: string | null;
+  ai_summary_zh_search: string | null;
+  ai_summary_ja_search: string | null;
+  authenticity_reason_zh_search: string | null;
+  authenticity_reason_ja_search: string | null;
   ai_summary_updated_at: string | null;
   opening_hours: string | null;
   photos: string | null;

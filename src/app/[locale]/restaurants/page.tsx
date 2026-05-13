@@ -325,6 +325,12 @@ export default async function RestaurantsPage({
                     {priceLevel && <span>{t(`price_level.${priceLevel}`)}</span>}
                   </div>
 
+                  {typeof restaurant.value_score === "number" && (
+                    <div className="mb-4 inline-flex items-center rounded-md bg-gold-50 px-2.5 py-1 text-xs font-semibold text-gold-700">
+                      {t("value_score")} {restaurant.value_score}
+                    </div>
+                  )}
+
                   {summary && (
                     <div className="ai-summary-card text-sm leading-snug" style={{ color: "var(--color-ink-700)" }}>
                       {summary}
