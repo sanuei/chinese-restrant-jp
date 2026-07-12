@@ -30,7 +30,8 @@ export default async function middleware(req: NextRequest) {
 export const config = {
   matcher: [
     "/admin/:path*",
-    // 匹配所有前台路径，排除 API、静态文件、_next
-    "/((?!api|_next|_vercel|admin|.*\\..*).*)",
+    // 匹配所有前台路径，排除 API、静态文件、_next，以及没有扩展名的图标类 file convention 路由
+    // （apple-icon 是 Next.js 约定的固定路径，不应该被当成缺 locale 前缀而被重定向）
+    "/((?!api|_next|_vercel|admin|apple-icon|.*\\..*).*)",
   ],
 };
