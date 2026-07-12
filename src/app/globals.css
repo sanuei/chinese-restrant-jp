@@ -260,8 +260,7 @@ body {
   inset: 0;
   z-index: -3;
   background-image:
-    linear-gradient(90deg, oklch(0.10 0.02 30 / 0.96) 0%, oklch(0.13 0.03 30 / 0.86) 38%, oklch(0.26 0.10 25 / 0.58) 72%, oklch(0.14 0.03 30 / 0.84) 100%),
-    linear-gradient(180deg, oklch(0.10 0.02 30 / 0.42), oklch(0.10 0.02 30 / 0.86)),
+    linear-gradient(180deg, oklch(0.10 0.02 30 / 0.42) 0%, oklch(0.10 0.02 30 / 0.58) 100%),
     url("https://images.unsplash.com/photo-1621916805571-2e804f82170c?q=80&w=2200&auto=format&fit=crop");
   background-position: center;
   background-size: cover;
