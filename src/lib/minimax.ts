@@ -25,6 +25,10 @@ async function callMiniMax<T = unknown>(messages: MiniMaxMessage[], temperature:
       temperature,
       top_p: 0.95,
       max_tokens: 4096,
+      // M3 默认开启思考模式，思考过程本身也占 max_tokens，遇到复杂 prompt（本站这种一次性
+      // 判断菜系+品类+正宗度+摘要+多条评论可信度的任务）容易把预算耗尽，导致最终 JSON 被截断、
+      // 解析失败。这里的任务是结构化分类/抽取，不需要长链路推理，直接关掉思考模式。
+      thinking: { type: "disabled" },
     })
   });
 
