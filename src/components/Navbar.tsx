@@ -6,6 +6,7 @@ import { useState } from "react";
 import { Menu, X, Globe, LogOut } from "lucide-react";
 import Link from "next/link";
 import { googleSignIn, userSignOut } from "@/lib/auth-actions";
+import { BRAND_ICON as BrandIcon } from "@/lib/cuisine-icons";
 
 type NavUser = { name: string | null; image: string | null };
 type Props = { locale: string; user: NavUser | null };
@@ -42,7 +43,7 @@ export default function Navbar({ locale, user }: Props) {
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
           <Link href={`/${locale}`} className="flex items-center gap-2 shrink-0">
-            <span className="text-2xl">🍜</span>
+            <BrandIcon size={26} style={{ color: "var(--color-vermilion-700)" }} strokeWidth={2} />
             <div className="hidden sm:block">
               <div className="font-serif font-black text-base leading-tight"
                    style={{ color: "var(--color-vermilion-700)" }}>

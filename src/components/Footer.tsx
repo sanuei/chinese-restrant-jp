@@ -1,5 +1,6 @@
 import { useTranslations } from "next-intl";
 import Link from "next/link";
+import { BRAND_ICON as BrandIcon } from "@/lib/cuisine-icons";
 
 type Props = { locale: string };
 
@@ -12,7 +13,7 @@ export default function Footer({ locale }: Props) {
         <div className="flex flex-col md:flex-row justify-between items-center gap-6">
           <div className="flex flex-col items-center md:items-start gap-2">
             <Link href={`/${locale}`} className="flex items-center gap-2">
-              <span className="text-2xl">🍜</span>
+              <BrandIcon size={22} style={{ color: "var(--color-vermilion-700)" }} strokeWidth={2} />
               <span className="font-serif font-black text-lg" style={{ color: "var(--color-vermilion-700)" }}>
                 {locale === "zh" ? "真味中华" : "ガチ中華ナビ"}
               </span>
