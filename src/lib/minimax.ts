@@ -116,6 +116,7 @@ export interface RestaurantAiReviewResult extends ReviewCredibilityResult {
 export interface RestaurantAiAnalysisResult {
   cuisine_type: "sichuan" | "cantonese" | "northern" | "fujian" | "hunan" | "jiangsu" | "northwest" | "yunnan" | "other";
   cuisine_confidence: number;
+  dish_type: "hotpot" | "bbq" | "noodles" | "malatang" | "dumpling" | "riceNoodle" | "grilledFish" | "dimsum" | "other";
   authenticity: "authentic" | "adapted" | "japanese" | "unknown";
   authenticity_score: number;
   authenticity_reason_zh: string;
@@ -136,13 +137,18 @@ export async function analyzeRestaurantSnapshot(input: {
   const systemPrompt = `你是“ガチ中華ナビ”的餐厅数据分析专家，熟悉中国各地菜系、日本中華、在日华人餐饮语境和虚假评论识别。
 
 请把同一家餐厅的所有 AI 任务合并完成：
-1. 判断菜系。
-2. 判断正宗度。
-3. 生成中文和日文短摘要。
-4. 判断每条 Google 评论的可信度。
+1. 判断菜系（地域风味）。
+2. 判断品类（经营业态）。
+3. 判断正宗度。
+4. 生成中文和日文短摘要。
+5. 判断每条 Google 评论的可信度。
 
 菜系 cuisine_type 只能是以下之一：
 sichuan(川菜), cantonese(粤菜), northern(北方菜), fujian(闽菜), hunan(湘菜), jiangsu(苏浙菜), northwest(西北菜), yunnan(云贵菜), other(综合/其他)。
+
+品类 dish_type 是和菜系平行的另一个维度，描述这家店的经营业态/上菜形式，只能是以下之一：
+hotpot(火锅), bbq(烧烤), noodles(拉面/面食为主), malatang(麻辣烫/冒菜), dumpling(饺子/包子为主), riceNoodle(米线/米粉为主), grilledFish(烤鱼), dimsum(点心/茶餐厅), other(综合正餐，不属于以上任何一种业态)。
+判断依据主要看店名和菜品结构（例如店名带"火锅""合桌"、或评论反复提到锅底涮菜，判 hotpot；店名带"烧烤""烤肉""串"，判 bbq；主要卖拉面/刀削面/炸酱面等面食，判 noodles；卖麻辣烫、冒菜等自选称重小吃，判 malatang；主打水饺、生煎、包子，判 dumpling；主打云南/广西风味米线米粉，判 riceNoodle；主打烤鱼，判 grilledFish；粤式茶餐厅、点心为主，判 dimsum；普通中餐馆、菜品综合没有明显单一业态特征，判 other）。
 
 正宗度 authenticity 只能是：
 authentic(正宗中国味), adapted(改良中国味), japanese(日式中华), unknown(无法确定)。
@@ -154,6 +160,7 @@ authentic(正宗中国味), adapted(改良中国味), japanese(日式中华), un
 {
   "cuisine_type": "...",
   "cuisine_confidence": 0-100,
+  "dish_type": "...",
   "authenticity": "...",
   "authenticity_score": 0-100,
   "authenticity_reason_zh": "中文理由，1-2句",

@@ -17,19 +17,31 @@ import {
   type RestaurantRow,
 } from "@/lib/restaurant-types";
 
-export default async function TopRestaurants({ locale }: { locale: string }) {
-  const t = await getTranslations({ locale, namespace: "home" });
+type SortMode = "top" | "new";
+
+type Props = {
+  locale: string;
+  title: string;
+  limit?: number;
+  sortMode?: SortMode;
+};
+
+export default async function TopRestaurants({ locale, title, limit = 6, sortMode = "top" }: Props) {
   const tc = await getTranslations({ locale, namespace: "cuisine" });
   const ta = await getTranslations({ locale, namespace: "auth_badge" });
   const tr = await getTranslations({ locale, namespace: "restaurant" });
 
+  const orderByClause = sortMode === "new"
+    ? "last_synced_at DESC, updated_at DESC, trusted_rating DESC"
+    : "trusted_rating DESC, raw_review_count DESC";
+
   const db = await getDb();
   let restaurants: RestaurantRow[] = [];
-  
+
   try {
     const { results = [] } = await db.prepare(
-      `SELECT * FROM restaurants WHERE is_active = 1 ORDER BY trusted_rating DESC, raw_review_count DESC LIMIT 6`
-    ).all<RestaurantRow>();
+      `SELECT * FROM restaurants WHERE is_active = 1 ORDER BY ${orderByClause} LIMIT ?`
+    ).bind(limit).all<RestaurantRow>();
     restaurants = results || [];
   } catch (error) {
     console.error("Database query error:", error);
@@ -43,7 +55,7 @@ export default async function TopRestaurants({ locale }: { locale: string }) {
   if (restaurants.length === 0) {
     return (
       <section className="py-12">
-        <h2 className="font-serif font-bold text-2xl sm:text-3xl mb-8 text-ink-900">{t("section_top")}</h2>
+        <h2 className="font-serif font-bold text-2xl sm:text-3xl mb-8 text-ink-900">{title}</h2>
         <div className="text-center py-10 bg-warm-100 rounded-2xl text-ink-400">
           尚未采集餐厅数据，请运行同步脚本获取数据。
         </div>
@@ -55,7 +67,7 @@ export default async function TopRestaurants({ locale }: { locale: string }) {
     <section className="py-12">
       <div className="flex items-center justify-between mb-8">
         <h2 className="font-serif font-bold text-2xl sm:text-3xl text-ink-900">
-          {t("section_top")}
+          {title}
         </h2>
         <Link href={`/${locale}/restaurants`} className="text-sm font-medium hover:underline text-vermilion-700">
           查看全部

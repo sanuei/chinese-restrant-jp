@@ -14,8 +14,9 @@
     "hero_title": "ガチ中華ナビ",
     "hero_tagline": "本物の中華を、あなたの街で。",
     "section_cuisines": "料理ジャンルから探す",
+    "section_dish_types": "業態から探す",
     "section_top": "東京の人気店",
-    "section_new": "最新レビュー"
+    "section_new": "最新掲載"
   },
   "auth_badge": {
     "authentic": "ガチ中華",
@@ -33,6 +34,17 @@
     "northwest": "西北料理",
     "yunnan": "雲南・貴州料理",
     "other": "総合・その他"
+  },
+  "dish_type": {
+    "hotpot": "火鍋",
+    "bbq": "焼肉・焼烤",
+    "noodles": "麺類",
+    "malatang": "麻辣湯・冒菜",
+    "dumpling": "餃子・包子",
+    "riceNoodle": "米線・米粉",
+    "grilledFish": "焼き魚鍋",
+    "dimsum": "飲茶・点心",
+    "other": "総合中華"
   },
   "restaurant": {
     "trusted_rating": "信頼スコア",

@@ -9,6 +9,7 @@ import FavoriteButton from "@/components/FavoriteButton";
 import {
   authenticityTypes,
   cuisineTypes,
+  dishTypes,
   getRating,
   getRestaurantName,
   getRestaurantSummary,
@@ -19,6 +20,7 @@ import {
   photoSrc,
   type Authenticity,
   type CuisineType,
+  type DishType,
   type RestaurantRow,
 } from "@/lib/restaurant-types";
 import { buildRestaurantSearchClause } from "@/lib/restaurant-search";
@@ -37,6 +39,10 @@ function getQueryValue(value: string | string[] | undefined): string {
 
 function getCuisineFilter(value: string): CuisineType | "" {
   return cuisineTypes.includes(value as CuisineType) ? (value as CuisineType) : "";
+}
+
+function getDishTypeFilter(value: string): DishType | "" {
+  return dishTypes.includes(value as DishType) ? (value as DishType) : "";
 }
 
 function getAuthenticityFilter(value: string): Authenticity | "" {
@@ -94,14 +100,16 @@ export default async function RestaurantsPage({
   const t = await getTranslations({ locale, namespace: "restaurant" });
   const ta = await getTranslations({ locale, namespace: "auth_badge" });
   const tc = await getTranslations({ locale, namespace: "cuisine" });
+  const td = await getTranslations({ locale, namespace: "dish_type" });
   const queryParams = await searchParams;
-  
+
   const q = getQueryValue(queryParams.q).trim();
   const cuisine = getCuisineFilter(getQueryValue(queryParams.cuisine));
+  const dishType = getDishTypeFilter(getQueryValue(queryParams.dish_type));
   const authenticityFilter = getAuthenticityFilter(getQueryValue(queryParams.authenticity));
   const minRating = getMinRatingFilter(getQueryValue(queryParams.minRating));
   const sort = getSortOption(getQueryValue(queryParams.sort));
-  const hasFilters = Boolean(q || cuisine || authenticityFilter || minRating || sort !== "rating");
+  const hasFilters = Boolean(q || cuisine || dishType || authenticityFilter || minRating || sort !== "rating");
 
   const db = await getDb();
 
@@ -120,6 +128,11 @@ export default async function RestaurantsPage({
   if (cuisine) {
     sql += ` AND cuisine_type = ?`;
     binds.push(cuisine);
+  }
+
+  if (dishType) {
+    sql += ` AND dish_type = ?`;
+    binds.push(dishType);
   }
 
   if (authenticityFilter) {
@@ -155,6 +168,7 @@ export default async function RestaurantsPage({
   const filterQuery = new URLSearchParams();
   if (q) filterQuery.set("q", q);
   if (cuisine) filterQuery.set("cuisine", cuisine);
+  if (dishType) filterQuery.set("dish_type", dishType);
   if (authenticityFilter) filterQuery.set("authenticity", authenticityFilter);
   if (minRating) filterQuery.set("minRating", String(minRating));
   if (sort !== "rating") filterQuery.set("sort", sort);
@@ -166,6 +180,7 @@ export default async function RestaurantsPage({
         subtitle: "按菜系、正宗度和可信评分筛选东京餐厅。",
         search: "餐厅、菜系、地区",
         allCuisines: "全部菜系",
+        allDishTypes: "全部品类",
         allAuthenticity: "全部认证",
         minRating: "最低可信评分",
         anyRating: "不限评分",
@@ -184,6 +199,7 @@ export default async function RestaurantsPage({
         subtitle: "料理ジャンル・認定・信頼スコアで東京の店を絞り込み。",
         search: "店名・ジャンル・エリア",
         allCuisines: "すべてのジャンル",
+        allDishTypes: "すべての業態",
         allAuthenticity: "すべての認定",
         minRating: "最低信頼スコア",
         anyRating: "指定なし",
@@ -220,7 +236,7 @@ export default async function RestaurantsPage({
         </div>
 
         <form action={`/${locale}/restaurants`} className="bg-white border border-warm-200 rounded-xl shadow-sm p-4">
-          <div className="grid grid-cols-1 md:grid-cols-[1.4fr_1fr_1fr] xl:grid-cols-[1.5fr_1fr_1fr_1fr_1fr_auto] gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-[1.4fr_1fr_1fr] xl:grid-cols-[1.5fr_1fr_1fr_1fr_1fr_1fr_auto] gap-3">
             <label className="relative">
               <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-400 pointer-events-none z-10" />
               <input
@@ -235,6 +251,13 @@ export default async function RestaurantsPage({
               <option value="">{copy.allCuisines}</option>
               {cuisineTypes.map((type) => (
                 <option key={type} value={type}>{tc(type)}</option>
+              ))}
+            </select>
+
+            <select name="dish_type" defaultValue={dishType} className="filter-select">
+              <option value="">{copy.allDishTypes}</option>
+              {dishTypes.map((type) => (
+                <option key={type} value={type}>{td(type)}</option>
               ))}
             </select>
 

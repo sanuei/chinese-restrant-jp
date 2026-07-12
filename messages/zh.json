@@ -14,8 +14,9 @@
     "hero_title": "真味中华",
     "hero_tagline": "在异乡，让每一口都像回家",
     "section_cuisines": "按菜系找餐厅",
+    "section_dish_types": "按品类找餐厅",
     "section_top": "东京口碑推荐",
-    "section_new": "最近新评价"
+    "section_new": "最新收录"
   },
   "auth_badge": {
     "authentic": "正宗中华",
@@ -33,6 +34,17 @@
     "northwest": "西北菜",
     "yunnan": "云贵菜",
     "other": "综合/其他"
+  },
+  "dish_type": {
+    "hotpot": "火锅",
+    "bbq": "烧烤",
+    "noodles": "拉面面食",
+    "malatang": "麻辣烫冒菜",
+    "dumpling": "饺子包子",
+    "riceNoodle": "米线米粉",
+    "grilledFish": "烤鱼",
+    "dimsum": "点心茶餐厅",
+    "other": "综合正餐"
   },
   "restaurant": {
     "trusted_rating": "可信评分",

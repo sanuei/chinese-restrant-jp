@@ -18,6 +18,7 @@ CREATE TABLE IF NOT EXISTS restaurants (
   price_level INTEGER DEFAULT 2,          -- 1-4（$ ~ $$$$）
   cuisine_type TEXT DEFAULT 'other',      -- sichuan/cantonese/northern/fujian/hunan/jiangsu/northwest/yunnan/other
   cuisine_confidence INTEGER DEFAULT 0,   -- AI菜系判断置信度 0-100
+  dish_type TEXT DEFAULT 'other',         -- hotpot/bbq/noodles/malatang/dumpling/riceNoodle/grilledFish/dimsum/other（经营业态，和菜系平行的第二套分类）
   authenticity TEXT DEFAULT 'unknown',    -- authentic / adapted / japanese / unknown
   authenticity_score INTEGER DEFAULT 0,   -- AI正宗度分数 0-100
   authenticity_reason_zh TEXT,            -- 正宗度判断理由（中文）

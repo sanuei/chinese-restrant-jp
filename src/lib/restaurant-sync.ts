@@ -96,6 +96,7 @@ function computeTrustedRating(
 }
 
 const CUISINE_TYPES = new Set(["sichuan", "cantonese", "northern", "fujian", "hunan", "jiangsu", "northwest", "yunnan", "other"]);
+const DISH_TYPES = new Set(["hotpot", "bbq", "noodles", "malatang", "dumpling", "riceNoodle", "grilledFish", "dimsum", "other"]);
 const AUTHENTICITY_TYPES = new Set(["authentic", "adapted", "japanese", "unknown"]);
 const CREDIBILITY_ACTIONS = new Set(["keep", "flag", "remove"]);
 
@@ -107,12 +108,14 @@ function clampScore(value: unknown, fallback = 50): number {
 
 function normalizeAiAnalysis(value: RestaurantAiAnalysisResult | null | undefined): RestaurantAiAnalysisResult {
   const cuisine = value?.cuisine_type || "other";
+  const dishType = value?.dish_type || "other";
   const authenticity = value?.authenticity || "unknown";
   const reviews = Array.isArray(value?.reviews) ? value.reviews : [];
 
   return {
     cuisine_type: CUISINE_TYPES.has(cuisine) ? cuisine : "other",
     cuisine_confidence: clampScore(value?.cuisine_confidence, 0),
+    dish_type: DISH_TYPES.has(dishType) ? dishType : "other",
     authenticity: AUTHENTICITY_TYPES.has(authenticity) ? authenticity : "unknown",
     authenticity_score: clampScore(value?.authenticity_score, 0),
     authenticity_reason_zh: value?.authenticity_reason_zh || "分析失败",
@@ -289,11 +292,11 @@ export async function saveRestaurantSyncSnapshot(
   await db.prepare(`
     INSERT INTO restaurants (
       id, name_original, address, city, ward, lat, lng, phone, website, google_maps_url, price_level,
-      cuisine_type, cuisine_confidence, authenticity, authenticity_score,
+      cuisine_type, cuisine_confidence, dish_type, authenticity, authenticity_score,
       authenticity_reason_zh, authenticity_reason_ja,
       raw_rating, trusted_rating, raw_review_count, trusted_review_count,
       ai_summary_zh, ai_summary_ja, photos, is_active, last_synced_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, COALESCE(?, 1), datetime('now'))
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, COALESCE(?, 1), datetime('now'))
     ON CONFLICT(id) DO UPDATE SET
       name_original = excluded.name_original,
       address = excluded.address,
@@ -307,6 +310,7 @@ export async function saveRestaurantSyncSnapshot(
       price_level = excluded.price_level,
       cuisine_type = excluded.cuisine_type,
       cuisine_confidence = excluded.cuisine_confidence,
+      dish_type = excluded.dish_type,
       authenticity = excluded.authenticity,
       authenticity_score = excluded.authenticity_score,
       authenticity_reason_zh = excluded.authenticity_reason_zh,
@@ -334,6 +338,7 @@ export async function saveRestaurantSyncSnapshot(
     place.price_level || 2,
     aiAnalysis.cuisine_type,
     aiAnalysis.cuisine_confidence,
+    aiAnalysis.dish_type,
     aiAnalysis.authenticity,
     aiAnalysis.authenticity_score,
     aiAnalysis.authenticity_reason_zh,

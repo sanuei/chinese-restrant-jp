@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import CuisineGrid from "@/components/CuisineGrid";
+import DishTypeGrid from "@/components/DishTypeGrid";
 import { getDb } from "@/lib/cloudflare";
 
 type Props = { params: Promise<{ locale: string }> };
@@ -43,9 +44,30 @@ async function getCuisineCounts(): Promise<Record<string, number>> {
   }
 }
 
+async function getDishTypeCounts(): Promise<Record<string, number>> {
+  try {
+    const db = await getDb();
+    const result = await db
+      .prepare(
+        `SELECT dish_type, COUNT(*) as count
+         FROM restaurants
+         WHERE is_active = 1
+         GROUP BY dish_type`
+      )
+      .all<{ dish_type: string; count: number }>();
+    const counts: Record<string, number> = {};
+    for (const row of result.results ?? []) {
+      counts[row.dish_type] = row.count;
+    }
+    return counts;
+  } catch {
+    return {};
+  }
+}
+
 export default async function CuisinesPage({ params }: Props) {
   const { locale } = await params;
-  const cuisineCounts = await getCuisineCounts();
+  const [cuisineCounts, dishTypeCounts] = await Promise.all([getCuisineCounts(), getDishTypeCounts()]);
   const copy = locale === "zh"
     ? {
         eyebrow: "菜系导航",
@@ -64,6 +86,7 @@ export default async function CuisinesPage({ params }: Props) {
       <h1 className="font-serif text-3xl font-black text-ink-900">{copy.title}</h1>
       <p className="mt-2 max-w-2xl text-sm text-ink-400">{copy.subtitle}</p>
       <CuisineGrid locale={locale} counts={cuisineCounts} />
+      <DishTypeGrid locale={locale} counts={dishTypeCounts} />
     </div>
   );
 }

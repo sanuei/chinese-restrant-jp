@@ -12,8 +12,22 @@ export const cuisineTypes = [
 
 export const authenticityTypes = ["authentic", "adapted", "japanese", "unknown"] as const;
 
+// 品类：经营业态，和菜系（地域风味）是平行的第二套分类，一店一个
+export const dishTypes = [
+  "hotpot",
+  "bbq",
+  "noodles",
+  "malatang",
+  "dumpling",
+  "riceNoodle",
+  "grilledFish",
+  "dimsum",
+  "other",
+] as const;
+
 export type CuisineType = (typeof cuisineTypes)[number];
 export type Authenticity = (typeof authenticityTypes)[number];
+export type DishType = (typeof dishTypes)[number];
 export type PriceLevel = 1 | 2 | 3 | 4;
 
 export interface RestaurantRow {
@@ -32,6 +46,7 @@ export interface RestaurantRow {
   price_level: number | null;
   cuisine_type: string | null;
   cuisine_confidence: number | null;
+  dish_type: string | null;
   authenticity: string | null;
   authenticity_score: number | null;
   authenticity_reason_zh: string | null;
@@ -71,6 +86,10 @@ export interface ReviewRow {
 
 export function normalizeCuisineType(value: string | null | undefined): CuisineType {
   return cuisineTypes.includes(value as CuisineType) ? (value as CuisineType) : "other";
+}
+
+export function normalizeDishType(value: string | null | undefined): DishType {
+  return dishTypes.includes(value as DishType) ? (value as DishType) : "other";
 }
 
 export function normalizeAuthenticity(value: string | null | undefined): Authenticity {

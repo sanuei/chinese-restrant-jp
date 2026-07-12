@@ -179,6 +179,18 @@ body {
 .cuisine-yunnan   { background: oklch(0.96 0.04 165); color: oklch(0.38 0.10 165); border-color: oklch(0.82 0.08 165); }
 .cuisine-other    { background: var(--color-warm-100); color: var(--color-ink-400); border-color: var(--color-warm-200); }
 
+/* 品类（火锅/烧烤等经营业态）用统一的中性配色，和菜系的多彩配色区分开，视觉上一眼能分清是两套体系 */
+.dish-type-tag {
+  background: var(--color-warm-100);
+  color: var(--color-vermilion-700);
+  border-color: var(--color-warm-200);
+}
+
+.dish-type-tag:hover {
+  background: var(--color-vermilion-50);
+  border-color: var(--color-vermilion-200);
+}
+
 .cuisine-tag {
   display: inline-flex;
   align-items: center;
@@ -250,7 +262,7 @@ body {
   background-image:
     linear-gradient(90deg, oklch(0.10 0.02 30 / 0.96) 0%, oklch(0.13 0.03 30 / 0.86) 38%, oklch(0.26 0.10 25 / 0.58) 72%, oklch(0.14 0.03 30 / 0.84) 100%),
     linear-gradient(180deg, oklch(0.10 0.02 30 / 0.42), oklch(0.10 0.02 30 / 0.86)),
-    url("https://images.unsplash.com/photo-1563245372-f21724e3856d?q=80&w=2200&auto=format&fit=crop");
+    url("https://images.unsplash.com/photo-1621916805571-2e804f82170c?q=80&w=2200&auto=format&fit=crop");
   background-position: center;
   background-size: cover;
   transform: scale(1.02);
