@@ -72,7 +72,7 @@ export const metadata: Metadata = {
     type: "website",
   },
   twitter: {
-    card: "summary",
+    card: "summary_large_image",
     title: "真味中华 | ガチ中華ナビ",
     description: "东京及关东ガチ中華餐厅评鉴、菜系搜索和 Google Maps 餐厅鉴定。",
   },

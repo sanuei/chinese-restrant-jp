@@ -7,6 +7,8 @@ import { notFound } from "next/navigation";
 import { Star, MapPin, Phone, Globe, ShieldCheck, ShieldAlert, MapPinned } from "lucide-react";
 import RatingExplainer from "@/components/RatingExplainer";
 import FavoriteButton from "@/components/FavoriteButton";
+import JsonLd from "@/components/JsonLd";
+import { buildBreadcrumbJsonLd, buildRestaurantJsonLd } from "@/lib/json-ld";
 import {
   getRating,
   getRestaurantName,
@@ -35,17 +37,30 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
     const name = getRestaurantName(restaurant, locale);
     const summary = getRestaurantSummary(restaurant, locale);
+    const photos = parsePhotoReferences(restaurant.photos);
+    const ogImage = photos.length > 0 ? photoSrc(photos[0], 1200) : undefined;
+    const isZh = locale === "zh";
+
     return {
       title: name,
       description: summary || `${name} のガチ中華評価、Google レビュー分析、可信评分。`,
       alternates: {
         canonical: `/${locale}/restaurants/${id}`,
+        languages: {
+          zh: `/zh/restaurants/${id}`,
+          ja: `/ja/restaurants/${id}`,
+          "x-default": `/zh/restaurants/${id}`,
+        },
       },
       openGraph: {
         title: name,
         description: summary || undefined,
         url: `/${locale}/restaurants/${id}`,
         type: "article",
+        siteName: "ガチ中華ナビ | 真味中华",
+        locale: isZh ? "zh_CN" : "ja_JP",
+        alternateLocale: isZh ? "ja_JP" : "zh_CN",
+        ...(ogImage ? { images: [{ url: ogImage }] } : {}),
       },
     };
   } catch {
@@ -98,8 +113,17 @@ export default async function RestaurantDetailPage({ params }: Props) {
   const isLoggedIn = Boolean(session?.user?.id);
   const favoritedIds = await getFavoritedIds([restaurant.id]);
 
+  const breadcrumbJsonLd = buildBreadcrumbJsonLd([
+    { name: locale === "zh" ? "首页" : "ホーム", url: `/${locale}` },
+    { name: locale === "zh" ? "餐厅" : "レストラン", url: `/${locale}/restaurants` },
+    { name, url: `/${locale}/restaurants/${restaurant.id}` },
+  ]);
+  const restaurantJsonLd = buildRestaurantJsonLd(restaurant, locale);
+
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+      <JsonLd data={restaurantJsonLd} />
+      <JsonLd data={breadcrumbJsonLd} />
       {/* 头部：照片轮播占位符 */}
       <div className="flex gap-2 h-64 sm:h-96 mb-8 overflow-hidden rounded-2xl">
         {photos.length > 0 ? (
@@ -132,7 +156,6 @@ export default async function RestaurantDetailPage({ params }: Props) {
           <div className="mb-6">
             <div className="flex items-center gap-3 mb-3">
               <span className={`badge-${authenticity}`}>
-                {authenticity === "authentic" ? "🔴 " : authenticity === "adapted" ? "🟡 " : "🔵 "}
                 {ta(authenticity)}
               </span>
               <span className={`cuisine-tag cuisine-${cuisineType}`}>
