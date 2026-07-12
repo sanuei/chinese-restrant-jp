@@ -12,10 +12,7 @@
   },
   "home": {
     "hero_title": "真味中华",
-    "hero_subtitle": "在日中国餐厅权威评鉴",
     "hero_tagline": "在异乡，让每一口都像回家",
-    "search_placeholder": "搜索餐厅名称、菜系、地区…",
-    "search_btn": "搜索",
     "section_cuisines": "按菜系找餐厅",
     "section_top": "东京口碑推荐",
     "section_new": "最近新评价"

@@ -1,12 +1,10 @@
-"use client";
+import { getTranslations } from "next-intl/server";
+import Link from "next/link";
+import { ShieldCheck, Sparkles } from "lucide-react";
+import { cuisineTypes } from "@/lib/restaurant-types";
+import { CUISINE_ICONS } from "@/lib/cuisine-icons";
 
-import { useTranslations } from "next-intl";
-import { MapPinned, ScanSearch, Search, ShieldCheck, Sparkles } from "lucide-react";
-import { useRouter } from "next/navigation";
-import { useState } from "react";
-
-type Props = { locale: string };
-type HeroMode = "search" | "verify";
+type Props = { locale: string; counts: Record<string, number> };
 
 const AUTH_BADGES = [
   { type: "authentic", tone: "vermilion" },
@@ -14,56 +12,30 @@ const AUTH_BADGES = [
   { type: "japanese", tone: "blue" },
 ];
 
-export default function HeroSection({ locale }: Props) {
-  const t = useTranslations("home");
-  const ta = useTranslations("auth_badge");
-  const router = useRouter();
-  const [query, setQuery] = useState("");
-  const [mode, setMode] = useState<HeroMode>("search");
-  const isVerifyMode = mode === "verify";
+export default async function HeroSection({ locale, counts }: Props) {
+  const t = await getTranslations({ locale, namespace: "home" });
+  const ta = await getTranslations({ locale, namespace: "auth_badge" });
+  const tc = await getTranslations({ locale, namespace: "cuisine" });
 
   const copy = locale === "zh"
     ? {
         kicker: "AI VERIFIED CHINESE RESTAURANT GUIDE",
         headline: "东京与关东的真实中国味评鉴",
-        searchTab: "找餐厅",
-        verifyTab: "AI 鉴定",
-        searchPlaceholder: "搜索餐厅、粤菜、茶餐厅、池袋…",
-        verifyPlaceholder: "粘贴 Google Maps 店铺链接",
-        searchButton: "搜索餐厅",
-        verifyButton: "开始鉴定",
         note: "结合 Google 最新评论、菜系识别与 AI 可信评分",
+        cuisinePrompt: "按菜系直接找店",
         scope: "东京 / 关东地区",
         signal: "人工可审的数据体系",
+        bottomHint: "浏览全部餐厅 →",
       }
     : {
         kicker: "AI VERIFIED CHINESE RESTAURANT GUIDE",
         headline: "東京と関東の本格中華を見極める",
-        searchTab: "探す",
-        verifyTab: "AI 鑑定",
-        searchPlaceholder: "店名・広東料理・池袋などで検索",
-        verifyPlaceholder: "Google Maps の店舗リンクを貼り付け",
-        searchButton: "検索",
-        verifyButton: "鑑定する",
         note: "Google の最新レビュー、料理ジャンル、AI 信頼スコアを統合",
+        cuisinePrompt: "料理ジャンルから直接探す",
         scope: "東京 / 関東エリア",
         signal: "人が確認できるデータ設計",
+        bottomHint: "全レストランを見る →",
       };
-
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    const trimmed = query.trim();
-    if (!trimmed && isVerifyMode) {
-      router.push(`/${locale}/verify`);
-      return;
-    }
-    if (!trimmed) return;
-
-    const nextPath = isVerifyMode
-      ? `/${locale}/verify?url=${encodeURIComponent(trimmed)}`
-      : `/${locale}/restaurants?q=${encodeURIComponent(trimmed)}`;
-    router.push(nextPath);
-  };
 
   return (
     <section className="hero-luxury relative overflow-hidden">
@@ -90,56 +62,25 @@ export default function HeroSection({ locale }: Props) {
             {copy.note}
           </p>
 
-          <form onSubmit={handleSearch} className="hero-command mt-10">
-            <div className="hero-mode-switch" role="tablist" aria-label={locale === "zh" ? "选择操作" : "操作を選択"}>
-              <button
-                type="button"
-                role="tab"
-                aria-selected={mode === "search"}
-                className={mode === "search" ? "is-active" : ""}
-                onClick={() => setMode("search")}
-              >
-                <Search size={15} />
-                {copy.searchTab}
-              </button>
-              <button
-                type="button"
-                role="tab"
-                aria-selected={mode === "verify"}
-                className={mode === "verify" ? "is-active" : ""}
-                onClick={() => setMode("verify")}
-              >
-                <ScanSearch size={15} />
-                {copy.verifyTab}
-              </button>
+          <div className="mt-10">
+            <div className="mb-3 text-xs font-bold uppercase tracking-[0.16em] text-gold-300/80">
+              {copy.cuisinePrompt}
             </div>
-
-            <div className="hero-input-row">
-              <div className="relative min-w-0 flex-1">
-                {isVerifyMode ? (
-                  <MapPinned
-                    size={18}
-                    className="absolute left-4 top-1/2 z-10 -translate-y-1/2 text-gold-300/80"
-                  />
-                ) : (
-                  <Search
-                    size={18}
-                    className="absolute left-4 top-1/2 z-10 -translate-y-1/2 text-gold-300/80"
-                  />
-                )}
-                <input
-                  type="text"
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                  placeholder={isVerifyMode ? copy.verifyPlaceholder : copy.searchPlaceholder}
-                  className="hero-search-input"
-                />
-              </div>
-              <button type="submit" className="hero-submit">
-                {isVerifyMode ? copy.verifyButton : copy.searchButton}
-              </button>
+            <div className="hero-cuisine-grid grid grid-cols-3 gap-2.5 sm:grid-cols-5 lg:grid-cols-9">
+              {cuisineTypes.map((key) => {
+                const Icon = CUISINE_ICONS[key];
+                return (
+                  <Link key={key} href={`/${locale}/restaurants?cuisine=${key}`} className="hero-cuisine-chip">
+                    <Icon size={24} />
+                    <span className="hero-cuisine-chip-label">{tc(key)}</span>
+                    <span className="hero-cuisine-chip-count">
+                      {counts[key] !== undefined ? `${counts[key]}店` : "-"}
+                    </span>
+                  </Link>
+                );
+              })}
             </div>
-          </form>
+          </div>
 
           <div className="mt-7 flex flex-wrap items-center gap-3">
             {AUTH_BADGES.map(({ type, tone }) => (
@@ -161,9 +102,9 @@ export default function HeroSection({ locale }: Props) {
         </div>
       </div>
 
-      <div className="hero-bottom-hint" aria-hidden>
-        <span>{locale === "zh" ? "按菜系找餐厅" : "料理ジャンルから探す"}</span>
-      </div>
+      <Link href={`/${locale}/restaurants`} className="hero-bottom-hint" aria-hidden>
+        <span>{copy.bottomHint}</span>
+      </Link>
     </section>
   );
 }

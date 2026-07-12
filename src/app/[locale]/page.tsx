@@ -1,8 +1,9 @@
 import { getTranslations } from "next-intl/server";
 import type { Metadata } from "next";
 import HeroSection from "@/components/HeroSection";
-import CuisineGrid from "@/components/CuisineGrid";
 import TopRestaurants from "@/components/TopRestaurants";
+import JsonLd from "@/components/JsonLd";
+import { buildOrganizationJsonLd } from "@/lib/json-ld";
 import { getDb } from "@/lib/cloudflare";
 
 export const dynamic = "force-dynamic";
@@ -54,10 +55,9 @@ export default async function HomePage({ params }: Props) {
 
   return (
     <>
-      <HeroSection locale={locale} />
+      <JsonLd data={buildOrganizationJsonLd(locale)} />
+      <HeroSection locale={locale} counts={cuisineCounts} />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <CuisineGrid locale={locale} counts={cuisineCounts} />
-        <div className="divider-chinese" />
         <TopRestaurants locale={locale} />
       </div>
     </>
