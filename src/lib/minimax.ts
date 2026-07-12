@@ -5,7 +5,7 @@
 
 const API_KEY = process.env.MINIMAX_API_KEY;
 const API_BASE = process.env.MINIMAX_API_BASE || "https://api.minimax.chat/v1";
-const MODEL = "MiniMax-M2.7-highspeed"; // 使用最新支持的模型
+const MODEL = "MiniMax-M3"; // 2026-06 发布的最新一代模型（1M 上下文 / Agent 推理）
 
 interface MiniMaxMessage {
   role: "system" | "user" | "assistant";
