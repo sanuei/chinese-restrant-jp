@@ -5,7 +5,10 @@
     "verify": "鉴定",
     "cuisines": "菜系",
     "map": "地图",
-    "about": "关于"
+    "favorites": "收藏",
+    "about": "关于",
+    "login": "登录",
+    "logout": "登出"
   },
   "home": {
     "hero_title": "真味中华",

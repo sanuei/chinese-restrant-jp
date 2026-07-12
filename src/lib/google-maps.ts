@@ -105,11 +105,3 @@ export async function getPlaceDetails(placeId: string): Promise<GooglePlaceResul
 
   return data.result;
 }
-
-export function getPhotoUrl(photoReference: string, maxWidth: number = 800): string {
-  const url = new URL("https://maps.googleapis.com/maps/api/place/photo");
-  url.searchParams.append("maxwidth", maxWidth.toString());
-  url.searchParams.append("photo_reference", photoReference);
-  url.searchParams.append("key", API_KEY as string);
-  return url.toString();
-}

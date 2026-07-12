@@ -3,12 +3,14 @@
 import { useTranslations } from "next-intl";
 import { useRouter, usePathname } from "next/navigation";
 import { useState } from "react";
-import { Menu, X, Globe } from "lucide-react";
+import { Menu, X, Globe, LogOut } from "lucide-react";
 import Link from "next/link";
+import { googleSignIn, userSignOut } from "@/lib/auth-actions";
 
-type Props = { locale: string };
+type NavUser = { name: string | null; image: string | null };
+type Props = { locale: string; user: NavUser | null };
 
-export default function Navbar({ locale }: Props) {
+export default function Navbar({ locale, user }: Props) {
   const t = useTranslations("nav");
   const pathname = usePathname();
   const router = useRouter();
@@ -29,6 +31,7 @@ export default function Navbar({ locale }: Props) {
     { href: `/${locale}/verify`, label: t("verify") },
     { href: `/${locale}/cuisines`, label: t("cuisines") },
     { href: `/${locale}/map`, label: t("map") },
+    { href: `/${locale}/favorites`, label: t("favorites") },
     { href: `/${locale}/about`, label: t("about") },
   ];
 
@@ -66,7 +69,7 @@ export default function Navbar({ locale }: Props) {
             ))}
           </div>
 
-          {/* Right: Language + Mobile Menu */}
+          {/* Right: Language + Auth + Mobile Menu */}
           <div className="flex items-center gap-3">
             <button
               onClick={switchLocale}
@@ -79,6 +82,38 @@ export default function Navbar({ locale }: Props) {
               <Globe size={14} />
               {otherLocaleLabel}
             </button>
+
+            <div className="hidden md:block">
+              {user ? (
+                <div className="flex items-center gap-2">
+                  {user.image ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={user.image} alt={user.name || ""} className="h-8 w-8 rounded-full" referrerPolicy="no-referrer" />
+                  ) : (
+                    <span className="flex h-8 w-8 items-center justify-center rounded-full bg-warm-100 text-xs font-bold text-ink-700">
+                      {(user.name || "U").slice(0, 1)}
+                    </span>
+                  )}
+                  <span className="max-w-[100px] truncate text-sm font-medium text-ink-700">{user.name}</span>
+                  <form action={userSignOut.bind(null, pathname)}>
+                    <button
+                      type="submit"
+                      className="flex items-center gap-1 rounded-md px-2 py-1.5 text-sm text-ink-400 transition-colors hover:text-vermilion-700"
+                      aria-label={t("logout")}
+                      title={t("logout")}
+                    >
+                      <LogOut size={16} />
+                    </button>
+                  </form>
+                </div>
+              ) : (
+                <form action={googleSignIn.bind(null, pathname)}>
+                  <button type="submit" className="btn-primary px-4 py-1.5 text-sm">
+                    {t("login")}
+                  </button>
+                </form>
+              )}
+            </div>
 
             <button
               className="md:hidden p-2 rounded-md"
@@ -104,6 +139,35 @@ export default function Navbar({ locale }: Props) {
                 {link.label}
               </Link>
             ))}
+            <div className="mt-2 border-t px-2 pt-3" style={{ borderTopColor: "var(--color-warm-200)" }}>
+              {user ? (
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    {user.image ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={user.image} alt={user.name || ""} className="h-8 w-8 rounded-full" referrerPolicy="no-referrer" />
+                    ) : (
+                      <span className="flex h-8 w-8 items-center justify-center rounded-full bg-warm-100 text-xs font-bold text-ink-700">
+                        {(user.name || "U").slice(0, 1)}
+                      </span>
+                    )}
+                    <span className="truncate text-sm font-medium text-ink-700">{user.name}</span>
+                  </div>
+                  <form action={userSignOut.bind(null, pathname)}>
+                    <button type="submit" className="flex items-center gap-1 text-sm text-ink-400">
+                      <LogOut size={16} />
+                      {t("logout")}
+                    </button>
+                  </form>
+                </div>
+              ) : (
+                <form action={googleSignIn.bind(null, pathname)}>
+                  <button type="submit" className="btn-primary w-full py-2 text-sm">
+                    {t("login")}
+                  </button>
+                </form>
+              )}
+            </div>
           </div>
         )}
       </div>

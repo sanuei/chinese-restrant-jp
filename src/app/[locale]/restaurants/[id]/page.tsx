@@ -1,10 +1,12 @@
 import { getDb } from "@/lib/cloudflare";
+import { auth } from "@/lib/auth";
+import { getFavoritedIds } from "@/lib/favorites";
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import { notFound } from "next/navigation";
-import Link from "next/link";
 import { Star, MapPin, Phone, Globe, ShieldCheck, ShieldAlert, MapPinned } from "lucide-react";
 import RatingExplainer from "@/components/RatingExplainer";
+import FavoriteButton from "@/components/FavoriteButton";
 import {
   getRating,
   getRestaurantName,
@@ -12,6 +14,7 @@ import {
   normalizeAuthenticity,
   normalizeCuisineType,
   parsePhotoReferences,
+  photoSrc,
   type RestaurantRow,
   type ReviewRow,
 } from "@/lib/restaurant-types";
@@ -88,11 +91,12 @@ export default async function RestaurantDetailPage({ params }: Props) {
   const cuisineType = normalizeCuisineType(restaurant.cuisine_type);
   
   const rawPhotos = parsePhotoReferences(restaurant.photos).slice(0, 5);
-  const photos = rawPhotos.map((ref) =>
-    ref.startsWith("http")
-      ? ref
-      : `https://maps.googleapis.com/maps/api/place/photo?maxwidth=800&photo_reference=${ref}&key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}`
-  );
+  // 经由 /api/photo 代理（R2 缓存），不再每次展示都直连 Google 计费
+  const photos = rawPhotos.map((ref) => photoSrc(ref, 800));
+
+  const session = await auth();
+  const isLoggedIn = Boolean(session?.user?.id);
+  const favoritedIds = await getFavoritedIds([restaurant.id]);
 
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
@@ -222,15 +226,26 @@ export default async function RestaurantDetailPage({ params }: Props) {
         {/* 右侧：侧边栏信息 */}
         <div className="w-full md:w-80 shrink-0">
           <div className="sticky top-24 p-6 bg-white border border-warm-200 rounded-xl shadow-sm">
-            <h3 className="font-bold text-lg mb-4 text-ink-900">餐厅信息</h3>
-            <Link
-              href={`/${locale}/map?restaurant=${restaurant.id}`}
+            <div className="mb-4 flex items-center justify-between">
+              <h3 className="font-bold text-lg text-ink-900">餐厅信息</h3>
+              <FavoriteButton
+                restaurantId={restaurant.id}
+                initialFavorited={favoritedIds.has(restaurant.id)}
+                isLoggedIn={isLoggedIn}
+                locale={locale}
+                className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-warm-200 transition-colors hover:border-vermilion-700"
+              />
+            </div>
+            <a
+              href={restaurant.google_maps_url || `https://www.google.com/maps/search/?api=1&query=${restaurant.lat},${restaurant.lng}`}
+              target="_blank"
+              rel="noopener noreferrer"
               className="mb-5 inline-flex w-full items-center justify-center gap-2 rounded-md bg-vermilion-700 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-vermilion-900"
             >
               <MapPinned size={16} />
-              {locale === "zh" ? "在地图中查看" : "地図で見る"}
-            </Link>
-            
+              {locale === "zh" ? "在 Google 地图中打开" : "Google マップで開く"}
+            </a>
+
             <ul className="flex flex-col gap-4 text-sm text-ink-700">
               <li className="flex gap-3">
                 <MapPin size={18} className="text-vermilion-700 shrink-0 mt-0.5" />

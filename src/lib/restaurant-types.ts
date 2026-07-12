@@ -95,6 +95,17 @@ export function getRating(restaurant: RestaurantRow): number {
   return restaurant.trusted_rating || restaurant.raw_rating || 0;
 }
 
+/**
+ * 把 photo_reference 或完整 URL 转成实际用于 <img src> 的地址。
+ * - 完整 URL（http 开头）：原样返回
+ * - photo_reference：走本站 /api/photo 代理（首次抓取后由 R2 缓存，避免 Google 按次计费）
+ */
+export function photoSrc(ref: string, width = 800): string {
+  if (!ref) return "";
+  if (ref.startsWith("http")) return ref;
+  return `/api/photo?ref=${encodeURIComponent(ref)}&w=${width}`;
+}
+
 export function parsePhotoReferences(photos: string | null | undefined): string[] {
   if (!photos) return [];
 

@@ -3,6 +3,7 @@ import { getMessages } from "next-intl/server";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { routing } from "@/i18n/routing";
+import { auth } from "@/lib/auth";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 
@@ -60,10 +61,17 @@ export default async function LocaleLayout({ children, params }: Props) {
   }
 
   const messages = await getMessages();
+  const session = await auth();
+  const user = session?.user
+    ? {
+        name: session.user.name || null,
+        image: session.user.image || null,
+      }
+    : null;
 
   return (
     <NextIntlClientProvider messages={messages}>
-      <Navbar locale={locale} />
+      <Navbar locale={locale} user={user} />
       <main className="min-h-screen">{children}</main>
       <Footer locale={locale} />
     </NextIntlClientProvider>

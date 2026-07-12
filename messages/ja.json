@@ -5,7 +5,10 @@
     "verify": "鑑定",
     "cuisines": "料理ジャンル",
     "map": "マップ",
-    "about": "について"
+    "favorites": "お気に入り",
+    "about": "について",
+    "login": "ログイン",
+    "logout": "ログアウト"
   },
   "home": {
     "hero_title": "ガチ中華ナビ",

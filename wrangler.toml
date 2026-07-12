@@ -22,8 +22,16 @@ database_id = "3478d84b-39dc-4602-b5c5-02efc64a02e1"
 binding = "CACHE"
 id = "6e3851f03b814594a0595ed3ae847a95"
 
+# R2 Bucket（餐厅照片缓存：从 Google Places Photo API 抓取一次后永久存储，避免按次计费）
+[[r2_buckets]]
+binding = "IMAGES"
+bucket_name = "gachi-chukanavi-images"
+
 # 本地开发变量（敏感 key 用 wrangler secret 管理）
 [vars]
 APP_NAME_ZH = "真味中华"
 APP_NAME_JA = "ガチ中華ナビ"
 DEFAULT_CITY = "tokyo"
+# 用户登录（Auth.js）：站点跑在 Cloudflare 反向代理之后，需要显式信任 host
+AUTH_URL = "https://gachi.soniclab.cc"
+AUTH_TRUST_HOST = "true"

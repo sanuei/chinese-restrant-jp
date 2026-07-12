@@ -1,7 +1,10 @@
 import { getDb } from "@/lib/cloudflare";
+import { auth } from "@/lib/auth";
+import { getFavoritedIds } from "@/lib/favorites";
 import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { Star, MapPin } from "lucide-react";
+import FavoriteButton from "@/components/FavoriteButton";
 import {
   getRating,
   getRestaurantName,
@@ -10,6 +13,7 @@ import {
   normalizeCuisineType,
   normalizePriceLevel,
   parsePhotoReferences,
+  photoSrc,
   type RestaurantRow,
 } from "@/lib/restaurant-types";
 
@@ -30,6 +34,10 @@ export default async function TopRestaurants({ locale }: { locale: string }) {
   } catch (error) {
     console.error("Database query error:", error);
   }
+
+  const session = await auth();
+  const isLoggedIn = Boolean(session?.user?.id);
+  const favoritedIds = await getFavoritedIds(restaurants.map((restaurant) => restaurant.id));
 
   // 开发环境如果没有数据，提供一个占位提示
   if (restaurants.length === 0) {
@@ -65,14 +73,8 @@ export default async function TopRestaurants({ locale }: { locale: string }) {
           let photoUrl = "https://images.unsplash.com/photo-1563245372-f21724e3856d?q=80&w=600&auto=format&fit=crop";
           const photos = parsePhotoReferences(restaurant.photos);
           if (photos.length > 0) {
-            const first = photos[0];
-            if (first.startsWith("http")) {
-              // 完整 URL 直接用
-              photoUrl = first;
-            } else {
-              // photo_reference 走 Google API 拼接
-              photoUrl = `https://maps.googleapis.com/maps/api/place/photo?maxwidth=600&photo_reference=${first}&key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}`;
-            }
+            // 经由 /api/photo 代理（R2 缓存），不再每次展示都直连 Google 计费
+            photoUrl = photoSrc(photos[0], 600);
           }
 
           return (
@@ -89,6 +91,14 @@ export default async function TopRestaurants({ locale }: { locale: string }) {
                     {authenticity === "authentic" ? "🔴 " : authenticity === "adapted" ? "🟡 " : "🔵 "}
                     {ta(authenticity)}
                   </span>
+                </div>
+                <div className="absolute top-3 left-3">
+                  <FavoriteButton
+                    restaurantId={restaurant.id}
+                    initialFavorited={favoritedIds.has(restaurant.id)}
+                    isLoggedIn={isLoggedIn}
+                    locale={locale}
+                  />
                 </div>
               </div>
               
