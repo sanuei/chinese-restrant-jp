@@ -45,7 +45,10 @@ async function ensureVerificationTable() {
   return db;
 }
 
-function hasChineseCuisineKeyword(snapshot: RestaurantSyncSnapshot): boolean {
+// 鉴定接口从不跳过 AI 分析，这里用交叉类型收窄，方便下面几个函数直接访问 aiAnalysis 字段
+type VerifiedSnapshot = RestaurantSyncSnapshot & { aiAnalysis: NonNullable<RestaurantSyncSnapshot["aiAnalysis"]> };
+
+function hasChineseCuisineKeyword(snapshot: VerifiedSnapshot): boolean {
   const text = [
     snapshot.place.name,
     snapshot.place.formatted_address,
@@ -56,7 +59,7 @@ function hasChineseCuisineKeyword(snapshot: RestaurantSyncSnapshot): boolean {
   return CHINESE_CUISINE_KEYWORDS.some((keyword) => text.includes(keyword));
 }
 
-function evaluateDisplayEligibility(snapshot: RestaurantSyncSnapshot) {
+function evaluateDisplayEligibility(snapshot: VerifiedSnapshot) {
   const isKanto = Boolean(snapshot.region);
   const ai = snapshot.aiAnalysis;
   const cuisineSignal = ai.cuisine_type !== "other" && ai.cuisine_confidence >= 50;
@@ -78,7 +81,7 @@ function evaluateDisplayEligibility(snapshot: RestaurantSyncSnapshot) {
   };
 }
 
-function getVerdict(snapshot: RestaurantSyncSnapshot): string {
+function getVerdict(snapshot: VerifiedSnapshot): string {
   if (snapshot.aiAnalysis.authenticity === "authentic") return "gachi";
   if (snapshot.aiAnalysis.authenticity === "adapted") return "adapted";
   if (snapshot.aiAnalysis.authenticity === "japanese") return "japanese";
@@ -94,7 +97,13 @@ export async function POST(req: NextRequest) {
     }
 
     const resolved = await resolveGoogleMapsInput(sourceUrl);
-    const snapshot = await buildRestaurantSyncSnapshot(resolved.placeId);
+    const rawSnapshot = await buildRestaurantSyncSnapshot(resolved.placeId);
+    if (!rawSnapshot.aiAnalysis) {
+      // buildRestaurantSyncSnapshot 只有在显式传 skipAiAnalysis 时才会返回 null，这里没传，
+      // 出现 null 说明调用方式被改动了——防御性报错，避免后面访问 aiAnalysis 时崩溃
+      throw new Error("AI analysis unexpectedly missing");
+    }
+    const snapshot: VerifiedSnapshot = { ...rawSnapshot, aiAnalysis: rawSnapshot.aiAnalysis };
     const eligibility = evaluateDisplayEligibility(snapshot);
     const verdict = getVerdict(snapshot);
 

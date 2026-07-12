@@ -25,6 +25,10 @@
  *
  *   # Phase 3: 刷新数据库里已有餐厅（重新拉 Google 照片/5条评论/AI）
  *   SYNC_LIMIT=20 node scripts/batch-collect.mjs --phase=refresh
+ *
+ *   # Phase 3（仅照片）：只刷新 Google 原始数据（含照片引用），跳过 AI 分析，
+ *   # 不会覆盖数据库里已有的菜系/正宗度/摘要。AI Key 失效时用这个最安全。
+ *   SKIP_AI=1 node scripts/batch-collect.mjs --phase=refresh
  */
 
 import dotenv from "dotenv";
@@ -50,6 +54,7 @@ const MIN_REVIEWS = Number(process.env.COLLECT_MIN_REVIEWS || 50);
 const LIMIT = Number(process.env.COLLECT_LIMIT || 100);
 const SYNC_DELAY = Number(process.env.SYNC_DELAY || 3000);
 const SYNC_LIMIT = Number(process.env.SYNC_LIMIT || 0);
+const SKIP_AI = process.env.SKIP_AI === "1"; // refresh 阶段：只刷新 Google 原始数据（含照片），不跑 AI 分析
 const RESYNC = process.env.RESYNC === "1";
 const REQUIRE_TOKYO = process.env.COLLECT_REQUIRE_TOKYO !== "0";
 const RESET_CANDIDATES = process.env.RESET_CANDIDATES === "1";
@@ -254,7 +259,7 @@ async function phaseCollect() {
 
 // ─── Phase 2: Sync ─────────────────────────────────────────────────────────
 
-async function syncCandidate(candidate) {
+async function syncCandidate(candidate, options = {}) {
   const url = `${SYNC_API_BASE}/api/admin/sync`;
   const res = await fetch(url, {
     method: "POST",
@@ -262,7 +267,7 @@ async function syncCandidate(candidate) {
       "Content-Type": "application/json",
       Authorization: `Bearer ${ADMIN_SECRET}`,
     },
-    body: JSON.stringify({ place_id: candidate.placeId }),
+    body: JSON.stringify({ place_id: candidate.placeId, skip_ai_analysis: Boolean(options.skipAiAnalysis) }),
   });
 
   const text = await res.text();
@@ -391,7 +396,7 @@ async function phaseRefresh() {
   }
 
   log(`Phase 3: Refresh existing restaurants`);
-  log(`total existing=${restaurants.length} will refresh=${toRefresh.length} delay=${SYNC_DELAY}ms`);
+  log(`total existing=${restaurants.length} will refresh=${toRefresh.length} delay=${SYNC_DELAY}ms skipAi=${SKIP_AI}`);
 
   const results = loadResults();
   const newResults = [...results];
@@ -402,7 +407,7 @@ async function phaseRefresh() {
     const name = restaurant.name_original || restaurant.name_zh || restaurant.id;
 
     try {
-      const payload = await syncCandidate({ placeId: restaurant.id });
+      const payload = await syncCandidate({ placeId: restaurant.id }, { skipAiAnalysis: SKIP_AI });
       const entry = {
         placeId: restaurant.id,
         name,

@@ -27,7 +27,8 @@ export type KantoRegion = {
 
 export type RestaurantSyncSnapshot = {
   place: GooglePlaceResult;
-  aiAnalysis: RestaurantAiAnalysisResult;
+  // null 表示本次同步跳过了 AI 分析（见 skipAiAnalysis），保存时不覆盖数据库里已有的菜系/正宗度/摘要
+  aiAnalysis: RestaurantAiAnalysisResult | null;
   reviewData: RestaurantReviewData[];
   trustedRating: number;
   trustedReviewCount: number;
@@ -37,6 +38,13 @@ export type RestaurantSyncSnapshot = {
 
 type SaveRestaurantOptions = {
   isActive?: number | null;
+};
+
+type BuildSnapshotOptions = {
+  // true 时只拉取 Google 最新数据（照片/评分/地址等），完全不调用 AI 分析、
+  // 也不动数据库里已有的评论 / 菜系 / 正宗度 / AI 摘要字段。
+  // 用于「AI Key 暂时不可用，但需要刷新已过期的照片引用」这种场景。
+  skipAiAnalysis?: boolean;
 };
 
 const KANTO_PREFECTURES: Array<KantoRegion & { pattern: string }> = [
@@ -142,13 +150,29 @@ export function extractAreaLabel(address: string): string | null {
   return municipality?.[1] || null;
 }
 
-export async function buildRestaurantSyncSnapshot(placeId: string): Promise<RestaurantSyncSnapshot> {
+export async function buildRestaurantSyncSnapshot(
+  placeId: string,
+  options: BuildSnapshotOptions = {}
+): Promise<RestaurantSyncSnapshot> {
   const db = await getDb();
   await loadGlobalParams(db);
 
   const place = await getPlaceDetails(placeId);
   if (!place) {
     throw new Error("Place not found");
+  }
+
+  if (options.skipAiAnalysis) {
+    // 只刷新 Google 最新数据（照片/评分/地址），不碰 AI 分析结果和评论表
+    return {
+      place,
+      aiAnalysis: null,
+      reviewData: [],
+      trustedRating: 0,
+      trustedReviewCount: 0,
+      region: getKantoRegion(place.formatted_address),
+      area: extractAreaLabel(place.formatted_address),
+    };
   }
 
   const sourceReviews = (place.reviews || []).slice(0, 5);
@@ -217,6 +241,50 @@ export async function saveRestaurantSyncSnapshot(
   const db = await getDb();
   const { place, aiAnalysis } = snapshot;
   const isActive = options.isActive ?? null;
+
+  if (aiAnalysis === null) {
+    // 仅刷新模式：只更新 Google 原始数据字段，完全不碰菜系/正宗度/AI摘要/评论表
+    await db.prepare(`
+      INSERT INTO restaurants (
+        id, name_original, address, city, ward, lat, lng, phone, website, google_maps_url, price_level,
+        raw_rating, raw_review_count, photos, is_active, last_synced_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, COALESCE(?, 1), datetime('now'))
+      ON CONFLICT(id) DO UPDATE SET
+        name_original = excluded.name_original,
+        address = excluded.address,
+        city = excluded.city,
+        ward = excluded.ward,
+        lat = excluded.lat,
+        lng = excluded.lng,
+        phone = excluded.phone,
+        website = excluded.website,
+        google_maps_url = excluded.google_maps_url,
+        price_level = excluded.price_level,
+        raw_rating = excluded.raw_rating,
+        raw_review_count = excluded.raw_review_count,
+        photos = excluded.photos,
+        is_active = COALESCE(?, restaurants.is_active),
+        last_synced_at = excluded.last_synced_at
+    `).bind(
+      place.place_id,
+      place.name,
+      place.formatted_address,
+      snapshot.region?.key || "tokyo",
+      snapshot.area,
+      place.geometry.location.lat,
+      place.geometry.location.lng,
+      place.formatted_phone_number || null,
+      place.website || null,
+      place.url || null,
+      place.price_level || 2,
+      place.rating || 0,
+      place.user_ratings_total || 0,
+      JSON.stringify(place.photos?.map((photo) => photo.photo_reference) || []),
+      isActive,
+      isActive
+    ).run();
+    return;
+  }
 
   await db.prepare(`
     INSERT INTO restaurants (
@@ -309,8 +377,11 @@ export async function saveRestaurantSyncSnapshot(
   }
 }
 
-export async function syncRestaurantByPlaceId(placeId: string, options: SaveRestaurantOptions = {}) {
-  const snapshot = await buildRestaurantSyncSnapshot(placeId);
+export async function syncRestaurantByPlaceId(
+  placeId: string,
+  options: SaveRestaurantOptions & BuildSnapshotOptions = {}
+) {
+  const snapshot = await buildRestaurantSyncSnapshot(placeId, { skipAiAnalysis: options.skipAiAnalysis });
   await saveRestaurantSyncSnapshot(snapshot, options);
   return snapshot;
 }
