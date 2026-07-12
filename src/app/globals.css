@@ -210,7 +210,7 @@ body {
   background: linear-gradient(135deg, oklch(0.97 0.02 80) 0%, oklch(0.95 0.03 75) 100%);
   border: 1px solid var(--color-gold-300);
   border-radius: var(--radius-md);
-  padding: 16px 20px;
+  padding: 26px 20px 16px;
   position: relative;
 }
 
