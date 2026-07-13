@@ -6,6 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 const nav = [
   { href: "/admin", label: "仪表盘", icon: "📊" },
   { href: "/admin/restaurants", label: "餐厅管理", icon: "🍜" },
+  { href: "/admin/users", label: "用户管理", icon: "👤" },
   { href: "/admin/verifications", label: "鉴定记录", icon: "✓" },
   { href: "/admin/collect", label: "采集工具", icon: "＋" },
   { href: "/", label: "← 返回前台", icon: "" },
