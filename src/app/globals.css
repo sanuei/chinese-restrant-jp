@@ -502,3 +502,37 @@ body {
   background: linear-gradient(to right, transparent, var(--color-gold-300), transparent);
   margin: 32px 0;
 }
+
+/* ================================================
+   横向滑动列表（首页热度榜）
+   纯 CSS 实现，不引入 JS 轮播：Workers 上 CPU 是硬约束，
+   能不塞 client component 就不塞。
+   ================================================ */
+
+.scroll-row {
+  display: flex;
+  gap: 16px;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scroll-padding-left: 16px;
+  padding-bottom: 8px;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;          /* Firefox */
+  -ms-overflow-style: none;       /* 旧版 Edge */
+}
+
+.scroll-row::-webkit-scrollbar {
+  display: none;                  /* Safari / Chrome：滑动列表上滚动条很碍眼 */
+}
+
+.scroll-row-item {
+  flex: 0 0 auto;
+  width: 200px;
+  scroll-snap-align: start;
+}
+
+@media (min-width: 640px) {
+  .scroll-row-item {
+    width: 220px;
+  }
+}

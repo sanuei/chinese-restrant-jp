@@ -99,3 +99,12 @@ CREATE INDEX IF NOT EXISTS idx_restaurants_authenticity ON restaurants(authentic
 CREATE INDEX IF NOT EXISTS idx_restaurants_trusted_rating ON restaurants(trusted_rating DESC);
 CREATE INDEX IF NOT EXISTS idx_reviews_restaurant ON reviews(restaurant_id);
 CREATE INDEX IF NOT EXISTS idx_reviews_credibility ON reviews(credibility_action);
+
+-- 餐厅浏览量统计（首页热度排行榜数据源，详见 db/migrations/0001_restaurant_views.sql）
+CREATE TABLE IF NOT EXISTS restaurant_views (
+  restaurant_id TEXT NOT NULL,
+  view_date TEXT NOT NULL,              -- YYYY-MM-DD（UTC）
+  views INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY (restaurant_id, view_date)
+);
+CREATE INDEX IF NOT EXISTS idx_restaurant_views_date ON restaurant_views(view_date);

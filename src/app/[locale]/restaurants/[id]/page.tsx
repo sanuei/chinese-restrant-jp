@@ -1,6 +1,7 @@
 import { getDb } from "@/lib/cloudflare";
-import { auth } from "@/lib/auth";
+import { getCurrentUser } from "@/lib/session";
 import { getFavoritedIds } from "@/lib/favorites";
+import { recordRestaurantView } from "@/lib/views";
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import { notFound } from "next/navigation";
@@ -99,6 +100,9 @@ export default async function RestaurantDetailPage({ params }: Props) {
     notFound();
   }
 
+  // 计入首页热度榜。内部用 waitUntil 异步落库，不阻塞这次渲染
+  await recordRestaurantView(restaurant.id);
+
   const name = getRestaurantName(restaurant, locale);
   const summary = getRestaurantSummary(restaurant, locale);
   const authenticityReason = locale === "zh" ? restaurant.authenticity_reason_zh : restaurant.authenticity_reason_ja;
@@ -109,8 +113,7 @@ export default async function RestaurantDetailPage({ params }: Props) {
   // 经由 /api/photo 代理（R2 缓存），不再每次展示都直连 Google 计费
   const photos = rawPhotos.map((ref) => photoSrc(ref, 800));
 
-  const session = await auth();
-  const isLoggedIn = Boolean(session?.user?.id);
+  const isLoggedIn = Boolean(await getCurrentUser());
   const favoritedIds = await getFavoritedIds([restaurant.id]);
 
   const breadcrumbJsonLd = buildBreadcrumbJsonLd([

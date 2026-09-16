@@ -2,6 +2,7 @@ import { getTranslations } from "next-intl/server";
 import type { Metadata } from "next";
 import HeroSection from "@/components/HeroSection";
 import TopRestaurants from "@/components/TopRestaurants";
+import TrendingRanking from "@/components/TrendingRanking";
 import DishTypeGrid from "@/components/DishTypeGrid";
 import JsonLd from "@/components/JsonLd";
 import { buildOrganizationJsonLd } from "@/lib/json-ld";
@@ -83,6 +84,8 @@ export default async function HomePage({ params }: Props) {
       <HeroSection locale={locale} counts={cuisineCounts} />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <DishTypeGrid locale={locale} counts={dishTypeCounts} />
+        <div className="divider-chinese" />
+        <TrendingRanking locale={locale} />
         <div className="divider-chinese" />
         <TopRestaurants locale={locale} title={t("section_top")} limit={9} sortMode="top" />
         <div className="divider-chinese" />

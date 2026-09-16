@@ -100,17 +100,25 @@ export function normalizePriceLevel(value: number | null | undefined): PriceLeve
   return value === 1 || value === 2 || value === 3 || value === 4 ? value : null;
 }
 
-export function getRestaurantName(restaurant: RestaurantRow, locale: string): string {
+// 下面几个取值函数只用到少数几列，用结构化的最小类型而不是整行 RestaurantRow，
+// 这样列表/榜单里那些只 SELECT 需要的列的查询结果也能直接传进来。
+export function getRestaurantName(
+  restaurant: Pick<RestaurantRow, "name_zh" | "name_ja" | "name_original">,
+  locale: string
+): string {
   return locale === "zh"
     ? restaurant.name_zh || restaurant.name_original
     : restaurant.name_ja || restaurant.name_original;
 }
 
-export function getRestaurantSummary(restaurant: RestaurantRow, locale: string): string | null {
+export function getRestaurantSummary(
+  restaurant: Pick<RestaurantRow, "ai_summary_zh" | "ai_summary_ja">,
+  locale: string
+): string | null {
   return locale === "zh" ? restaurant.ai_summary_zh : restaurant.ai_summary_ja;
 }
 
-export function getRating(restaurant: RestaurantRow): number {
+export function getRating(restaurant: Pick<RestaurantRow, "trusted_rating" | "raw_rating">): number {
   return restaurant.trusted_rating || restaurant.raw_rating || 0;
 }
 

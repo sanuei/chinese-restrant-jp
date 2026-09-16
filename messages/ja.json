@@ -16,7 +16,10 @@
     "section_cuisines": "料理ジャンルから探す",
     "section_dish_types": "業態から探す",
     "section_top": "東京の人気店",
-    "section_new": "最新掲載"
+    "section_new": "最新掲載",
+    "section_trending": "今週の人気ランキング",
+    "section_trending_hint": "直近7日間の閲覧数によるランキング（5分ごとに更新）",
+    "see_all": "すべて見る"
   },
   "auth_badge": {
     "authentic": "ガチ中華",
@@ -61,7 +64,8 @@
     "ai_summary": "AI総評",
     "highlights": "みんなの満足ポイント",
     "concerns": "気になる点",
-    "authenticity_reason": "認定根拠"
+    "authenticity_reason": "認定根拠",
+    "views": "回閲覧"
   },
   "review": {
     "write": "レビューを書く",

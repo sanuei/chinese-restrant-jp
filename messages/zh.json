@@ -16,7 +16,10 @@
     "section_cuisines": "按菜系找餐厅",
     "section_dish_types": "按品类找餐厅",
     "section_top": "东京口碑推荐",
-    "section_new": "最新收录"
+    "section_new": "最新收录",
+    "section_trending": "本周热门榜",
+    "section_trending_hint": "根据最近 7 天的浏览热度排名，每 5 分钟更新",
+    "see_all": "查看全部"
   },
   "auth_badge": {
     "authentic": "正宗中华",
@@ -61,7 +64,8 @@
     "ai_summary": "AI 综合摘要",
     "highlights": "大家最满意",
     "concerns": "注意事项",
-    "authenticity_reason": "认证依据"
+    "authenticity_reason": "认证依据",
+    "views": "次浏览"
   },
   "review": {
     "write": "写评论",
