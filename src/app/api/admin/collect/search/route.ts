@@ -1,3 +1,4 @@
+import { consumeGoogleQuota } from "@/lib/google-quota";
 import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/cloudflare";
 
@@ -55,6 +56,10 @@ function clampNumber(value: unknown, fallback: number, min: number, max: number)
 async function searchGoogle(query: string): Promise<GoogleTextSearchResult[]> {
   const apiKey = process.env.GOOGLE_MAPS_API_KEY;
   if (!apiKey) throw new Error("Missing GOOGLE_MAPS_API_KEY");
+
+  if (!(await consumeGoogleQuota("textsearch"))) {
+    throw new Error("Google API 本月免费额度已用完，已自动停止调用以避免产生费用");
+  }
 
   const url = new URL("https://maps.googleapis.com/maps/api/place/textsearch/json");
   url.searchParams.set("query", query);

@@ -60,7 +60,9 @@ export default async function TrendingRanking({ locale, limit = 12 }: Props) {
           const rank = index + 1;
           const name = getRestaurantName(restaurant, locale);
           const photos = parsePhotoReferences(restaurant.photos);
-          const photoUrl = photos.length > 0 ? photoSrc(photos[0], 400) : FALLBACK_PHOTO;
+          // 宽度必须和列表卡片一致（600）：/api/photo 的 R2 缓存键是 ref+宽度，
+          // 用没缓存过的宽度会回源 Google，key 一旦失效图片就全挂
+          const photoUrl = photos.length > 0 ? photoSrc(photos[0], 600) : FALLBACK_PHOTO;
           const authenticity = normalizeAuthenticity(restaurant.authenticity);
           const cuisineType = normalizeCuisineType(restaurant.cuisine_type);
 
