@@ -197,8 +197,24 @@ export async function buildRestaurantSyncSnapshot(
       })),
     }));
   } catch (e) {
-    console.error("MiniMax Combined Analysis Error:", e);
-    aiAnalysis = normalizeAiAnalysis(null);
+    // AI 挂掉时绝不能把占位值当成分析结果写回去。
+    // normalizeAiAnalysis(null) 会返回 cuisine=other / dish=other /
+    // authenticity=unknown / 摘要="暂无摘要"，一旦落库就会把这家店原本
+    // 正确的分类和摘要抹掉 —— 一次批量刷新就能毁掉几十家的数据
+    // （实际发生过：228 家刷新里 35 家 AI 失败，分类全被重置）。
+    //
+    // 返回 aiAnalysis = null，保存时会走「不带 AI 字段」的那条 upsert，
+    // 只更新 Google 原始数据（照片/评分/营业时间），已有分析原样保留。
+    console.error("MiniMax Combined Analysis Error（保留已有分析，不覆盖）:", e);
+    return {
+      place,
+      aiAnalysis: null,
+      reviewData: [],
+      trustedRating: 0,
+      trustedReviewCount: 0,
+      region: getKantoRegion(place.formatted_address),
+      area: extractAreaLabel(place.formatted_address),
+    };
   }
 
   const reviewData: RestaurantReviewData[] = reviewsWithText.map((review, index) => {
