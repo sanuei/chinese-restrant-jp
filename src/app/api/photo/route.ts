@@ -64,7 +64,27 @@ export async function GET(request: Request) {
     });
   }
 
-  // 2) 未命中：向 Google 抓取一次（服务端 key，不再暴露给浏览器）
+  // 2) 换个宽度找找。站内实际只用 600（列表/榜单）、800（详情）、1200（OG 图）三种。
+  //    D1 里存的 photo_reference 是采集时拿到的，Google 侧会失效（实测返回 400），
+  //    所以「没缓存过的宽度」基本不可能再抓回来 —— 与其每次都去撞一次 Google
+  //    （既拿不到图又白扣一次配额），不如直接复用已经缓存过的其它尺寸，
+  //    浏览器自己缩放，视觉上没差别。
+  for (const altWidth of [800, 600, 1200]) {
+    if (altWidth === width) continue;
+    const altKey = `photos/${await hashKey(`${ref}@${altWidth}`)}.jpg`;
+    const alt = await bucket.get(altKey);
+    if (alt) {
+      return new Response(alt.body, {
+        headers: {
+          "Content-Type": alt.httpMetadata?.contentType || "image/jpeg",
+          "Cache-Control": CACHE_HEADER,
+          "X-Photo-Cache": `HIT-ALT-${altWidth}`,
+        },
+      });
+    }
+  }
+
+  // 3) 都没有：向 Google 抓取一次（服务端 key，不再暴露给浏览器）
   const apiKey = process.env.GOOGLE_MAPS_API_KEY;
   if (!apiKey) {
     return Response.redirect(FALLBACK_IMAGE, 302);
@@ -90,7 +110,7 @@ export async function GET(request: Request) {
   const contentType = upstream.headers.get("content-type") || "image/jpeg";
   const bytes = await upstream.arrayBuffer();
 
-  // 3) 写入 R2 供后续复用（失败也不影响本次返回）
+  // 4) 写入 R2 供后续复用（失败也不影响本次返回）
   try {
     await bucket.put(key, bytes, { httpMetadata: { contentType } });
   } catch (e) {

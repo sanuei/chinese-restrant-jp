@@ -149,7 +149,7 @@ export default async function FavoritesPage({ params }: Props) {
                   </div>
 
                   {summary && (
-                    <div className="ai-summary-card text-sm leading-snug text-ink-700 line-clamp-2">{summary}</div>
+                    <div className="ai-summary-card text-sm leading-snug text-ink-700"><span className="line-clamp-2">{summary}</span></div>
                   )}
                 </div>
               </Link>

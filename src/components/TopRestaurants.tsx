@@ -130,9 +130,12 @@ export default async function TopRestaurants({ locale, title, limit = 6, sortMod
                   {priceLevel && <span>{tr(`price_level.${priceLevel}`)}</span>}
                 </div>
 
+                {/* line-clamp 会带 overflow:hidden，直接挂在卡片上会把
+                    .ai-summary-card::before 那个露在边框外的「AI」角标裁掉一半，
+                    所以截断交给内层元素做 */}
                 {summary && (
-                  <div className="ai-summary-card text-sm leading-snug text-ink-700 line-clamp-2">
-                    {summary}
+                  <div className="ai-summary-card text-sm leading-snug text-ink-700">
+                    <span className="line-clamp-2">{summary}</span>
                   </div>
                 )}
                 

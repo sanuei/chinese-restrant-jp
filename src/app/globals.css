@@ -314,6 +314,9 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
+  min-width: 0;
+  height: 100%;
   gap: 6px;
   padding: 14px 8px;
   border: 1px solid oklch(0.78 0.15 80 / 0.28);
@@ -338,8 +341,19 @@ body {
 .hero-cuisine-chip-label {
   font-size: 0.78rem;
   font-weight: 700;
-  line-height: 1.2;
-  white-space: nowrap;
+  line-height: 1.25;
+  /* 日文菜系名明显更长（江蘇・上海料理 / 雲南・貴州料理 / 総合・その他），
+     原来的 nowrap 会直接把文字顶出卡片。改成允许折行 */
+  white-space: normal;
+  overflow-wrap: anywhere;
+  text-wrap: balance;
+}
+
+/* 9 列并排时每格很窄，日文再缩一档才不至于挤成三行 */
+@media (min-width: 1024px) {
+  .hero-cuisine-chip-label {
+    font-size: 0.72rem;
+  }
 }
 
 .hero-cuisine-chip-count {
