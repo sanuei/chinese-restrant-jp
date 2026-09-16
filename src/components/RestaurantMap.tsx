@@ -50,10 +50,15 @@ const TOKYO_CENTER: [number, number] = [139.7036, 35.6895];
 export default function RestaurantMap({ locale, restaurants, cuisineOptions, authenticityOptions, copy }: Props) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<MapLibreMap | null>(null);
-  const [ready, setReady] = useState(false);
   const [cuisine, setCuisine] = useState("");
   const [authenticity, setAuthenticity] = useState("");
   const [minRating, setMinRating] = useState(0);
+
+  // 弹窗文案走 ref：避免把对象属性写进 effect 依赖，effect 重跑会让地图重建、ready 丢失
+  const copyRef = useRef(copy);
+  useEffect(() => {
+    copyRef.current = copy;
+  }, [copy]);
 
   const filtered = useMemo(
     () =>
@@ -66,7 +71,7 @@ export default function RestaurantMap({ locale, restaurants, cuisineOptions, aut
     [restaurants, cuisine, authenticity, minRating]
   );
 
-  const geojson = useMemo(
+  const geojsonSource = useMemo(
     () => ({
       type: "FeatureCollection" as const,
       features: filtered.map((r) => ({
@@ -77,6 +82,9 @@ export default function RestaurantMap({ locale, restaurants, cuisineOptions, aut
     }),
     [filtered]
   );
+  const geojson = geojsonSource;
+  // load 回调里要用到最新数据，但不能把 geojson 写进 effect 依赖（会重建地图）
+  const geojsonRef = useRef(geojson);
 
   // 初始化地图。maplibre 体积不小，用动态 import 让它不进首屏 chunk。
   useEffect(() => {
@@ -203,8 +211,8 @@ export default function RestaurantMap({ locale, restaurants, cuisineOptions, aut
                    </div>
                    <div style="margin-top:4px;font-size:11px;color:#8a8079">${p.authenticityLabel}</div>
                    <div style="margin-top:10px;display:flex;gap:12px;font-size:12px;font-weight:600">
-                     <a href="/${locale}/restaurants/${p.id}" style="color:#b4001e;text-decoration:none">${copy.detail}</a>
-                     <a href="${p.mapsUrl}" target="_blank" rel="noopener noreferrer" style="color:#524740;text-decoration:none">${copy.openInMaps}</a>
+                     <a href="/${locale}/restaurants/${p.id}" style="color:#b4001e;text-decoration:none">${copyRef.current.detail}</a>
+                     <a href="${p.mapsUrl}" target="_blank" rel="noopener noreferrer" style="color:#524740;text-decoration:none">${copyRef.current.openInMaps}</a>
                    </div>
                  </div>
                </div>`
@@ -221,7 +229,8 @@ export default function RestaurantMap({ locale, restaurants, cuisineOptions, aut
           });
         }
 
-        setReady(true);
+        // 初始数据在这里直接灌
+        (map.getSource("restaurants") as GeoJSONSource | undefined)?.setData(geojsonRef.current);
       });
     })();
 
@@ -230,15 +239,17 @@ export default function RestaurantMap({ locale, restaurants, cuisineOptions, aut
       mapRef.current?.remove();
       mapRef.current = null;
     };
-  }, [locale, copy.detail, copy.openInMaps]);
+  }, [locale]);
 
   // 筛选变化时只换数据，不重建地图
   useEffect(() => {
+    geojsonRef.current = geojson;
     const map = mapRef.current;
-    if (!map || !ready) return;
-    const source = map.getSource("restaurants") as GeoJSONSource | undefined;
-    source?.setData(geojson);
-  }, [geojson, ready]);
+    if (!map) return;
+    const apply = () => (map.getSource("restaurants") as GeoJSONSource | undefined)?.setData(geojson);
+    if (map.isStyleLoaded()) apply();
+    else map.once("load", apply);
+  }, [geojson]);
 
   const chip = (active: boolean) =>
     `shrink-0 rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors ${
@@ -307,13 +318,17 @@ export default function RestaurantMap({ locale, restaurants, cuisineOptions, aut
         </div>
       </div>
 
-      <div className="relative h-[calc(100vh-13rem)] min-h-[420px] w-full">
-        <div ref={containerRef} className="absolute inset-0" />
-        {!ready && (
-          <div className="absolute inset-0 flex items-center justify-center bg-warm-50 text-sm text-ink-400">
-            {copy.loading}
-          </div>
-        )}
+      <div className="relative h-[calc(100vh-13rem)] min-h-[420px] w-full bg-warm-50">
+        {/* 加载提示垫在地图底下，地图画出来自然就盖住了。
+            刻意不用 ready 状态去控制显隐 —— 之前靠 load/idle 事件置状态，
+            事件没按预期触发时遮罩会永远盖住一张其实已经渲染好的地图。
+            这样写没有状态可卡。 */}
+        <div className="absolute inset-0 flex items-center justify-center text-sm text-ink-400">
+          {copy.loading}
+        </div>
+        {/* 不能用 absolute inset-0：maplibre 会给这个元素加 .maplibregl-map，
+            它的 CSS 是 position:relative，会盖掉 absolute，导致 inset-0 失效、高度塌成 0 */}
+        <div ref={containerRef} className="relative h-full w-full" />
       </div>
     </div>
   );
