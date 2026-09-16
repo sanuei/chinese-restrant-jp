@@ -1,5 +1,8 @@
 import type { Metadata } from "next";
 import VerifyTool from "@/components/VerifyTool";
+import RecentVerifications from "@/components/RecentVerifications";
+
+export const dynamic = "force-dynamic";
 
 type Props = {
   params: Promise<{ locale: string }>;
@@ -32,6 +35,7 @@ export default async function VerifyPage({ params, searchParams }: Props) {
   return (
     <main className="mx-auto max-w-6xl px-4 py-10 sm:px-6 lg:px-8">
       <VerifyTool locale={locale} initialUrl={initialUrl} />
+      <RecentVerifications locale={locale} />
     </main>
   );
 }

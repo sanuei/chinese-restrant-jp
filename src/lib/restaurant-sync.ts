@@ -250,8 +250,8 @@ export async function saveRestaurantSyncSnapshot(
     await db.prepare(`
       INSERT INTO restaurants (
         id, name_original, address, city, ward, lat, lng, phone, website, google_maps_url, price_level,
-        raw_rating, raw_review_count, photos, is_active, last_synced_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, COALESCE(?, 1), datetime('now'))
+        raw_rating, raw_review_count, photos, opening_hours, is_active, last_synced_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, COALESCE(?, 1), datetime('now'))
       ON CONFLICT(id) DO UPDATE SET
         name_original = excluded.name_original,
         address = excluded.address,
@@ -266,6 +266,7 @@ export async function saveRestaurantSyncSnapshot(
         raw_rating = excluded.raw_rating,
         raw_review_count = excluded.raw_review_count,
         photos = excluded.photos,
+        opening_hours = excluded.opening_hours,
         is_active = COALESCE(?, restaurants.is_active),
         last_synced_at = excluded.last_synced_at
     `).bind(
@@ -283,6 +284,13 @@ export async function saveRestaurantSyncSnapshot(
       place.rating || 0,
       place.user_ratings_total || 0,
       JSON.stringify(place.photos?.map((photo) => photo.photo_reference) || []),
+      // 只留 periods/weekday_text，open_now 是拉取那一刻的快照，存下来会过期误导
+      place.opening_hours
+        ? JSON.stringify({
+            periods: place.opening_hours.periods || [],
+            weekday_text: place.opening_hours.weekday_text || [],
+          })
+        : null,
       isActive,
       isActive
     ).run();
@@ -295,8 +303,8 @@ export async function saveRestaurantSyncSnapshot(
       cuisine_type, cuisine_confidence, dish_type, authenticity, authenticity_score,
       authenticity_reason_zh, authenticity_reason_ja,
       raw_rating, trusted_rating, raw_review_count, trusted_review_count,
-      ai_summary_zh, ai_summary_ja, photos, is_active, last_synced_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, COALESCE(?, 1), datetime('now'))
+      ai_summary_zh, ai_summary_ja, photos, opening_hours, is_active, last_synced_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, COALESCE(?, 1), datetime('now'))
     ON CONFLICT(id) DO UPDATE SET
       name_original = excluded.name_original,
       address = excluded.address,
@@ -322,6 +330,7 @@ export async function saveRestaurantSyncSnapshot(
       ai_summary_zh = excluded.ai_summary_zh,
       ai_summary_ja = excluded.ai_summary_ja,
       photos = excluded.photos,
+      opening_hours = excluded.opening_hours,
       is_active = COALESCE(?, restaurants.is_active),
       last_synced_at = excluded.last_synced_at
   `).bind(
@@ -350,6 +359,13 @@ export async function saveRestaurantSyncSnapshot(
     aiAnalysis.ai_summary_zh,
     aiAnalysis.ai_summary_ja,
     JSON.stringify(place.photos?.map((photo) => photo.photo_reference) || []),
+      // 只留 periods/weekday_text，open_now 是拉取那一刻的快照，存下来会过期误导
+      place.opening_hours
+        ? JSON.stringify({
+            periods: place.opening_hours.periods || [],
+            weekday_text: place.opening_hours.weekday_text || [],
+          })
+        : null,
     isActive,
     isActive
   ).run();

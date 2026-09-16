@@ -115,14 +115,17 @@ export async function POST(req: NextRequest) {
     const verificationId = crypto.randomUUID();
     await db.prepare(`
       INSERT INTO restaurant_verifications (
-        id, restaurant_id, place_id, source_url, resolved_url, status, display_eligible,
+        id, restaurant_id, place_id, place_name, source_url, resolved_url, status, display_eligible,
         is_kanto, is_chinese, region, verdict, confidence, conclusion_zh, conclusion_ja,
         evidence_json, raw_ai_json
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).bind(
       verificationId,
       eligibility.displayEligible ? snapshot.place.place_id : null,
       snapshot.place.place_id,
+      // 单独存一份店名：公开的鉴定记录列表要用，
+      // 不然每次都得去 parse evidence_json（里面塞了完整评论正文）
+      snapshot.place.name,
       sourceUrl,
       resolved.resolvedUrl,
       eligibility.displayEligible ? "accepted" : "rejected",

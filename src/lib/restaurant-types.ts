@@ -60,6 +60,9 @@ export interface RestaurantRow {
   ai_summary_updated_at: string | null;
   opening_hours: string | null;
   photos: string | null;
+  nearest_station: string | null;
+  nearest_station_zh: string | null;
+  station_distance_m: number | null;
   is_active: number | null;
   last_synced_at: string | null;
   created_at: string | null;
@@ -116,6 +119,27 @@ export function getRestaurantSummary(
   locale: string
 ): string | null {
   return locale === "zh" ? restaurant.ai_summary_zh : restaurant.ai_summary_ja;
+}
+
+/** 日本不动产惯例：步行速度按 80m/分钟，不足一分钟算一分钟 */
+export function walkMinutes(meters: number | null | undefined): number | null {
+  if (!meters || meters <= 0) return null;
+  return Math.max(1, Math.ceil(meters / 80));
+}
+
+/**
+ * 「池袋站 步行3分钟」这样的一行交通信息。
+ * 日文站名basically是汉字，中文用户也能读，所以没有 name:zh 时直接用日文名。
+ * 超过 1.5km 就不算「附近车站」了，返回 null 让调用方回退到显示行政区。
+ */
+export function getStationLabel(
+  restaurant: Pick<RestaurantRow, "nearest_station" | "nearest_station_zh" | "station_distance_m">,
+  locale: string
+): string | null {
+  const name = (locale === "zh" ? restaurant.nearest_station_zh : null) || restaurant.nearest_station;
+  const minutes = walkMinutes(restaurant.station_distance_m);
+  if (!name || !minutes || (restaurant.station_distance_m ?? 0) > 1500) return null;
+  return locale === "zh" ? `${name}站 步行${minutes}分钟` : `${name}駅 徒歩${minutes}分`;
 }
 
 export function getRating(restaurant: Pick<RestaurantRow, "trusted_rating" | "raw_rating">): number {

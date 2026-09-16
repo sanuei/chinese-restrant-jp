@@ -5,10 +5,12 @@ import { recordRestaurantView } from "@/lib/views";
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import { notFound } from "next/navigation";
-import { Star, MapPin, Phone, Globe, ShieldCheck, ShieldAlert, MapPinned } from "lucide-react";
+import { Star, MapPin, Phone, Globe, ShieldCheck, ShieldAlert, MapPinned, TrainFront } from "lucide-react";
 import RatingExplainer from "@/components/RatingExplainer";
 import FavoriteButton from "@/components/FavoriteButton";
+import ShareButton from "@/components/ShareButton";
 import JsonLd from "@/components/JsonLd";
+import OpeningHours from "@/components/OpeningHours";
 import { buildBreadcrumbJsonLd, buildRestaurantJsonLd } from "@/lib/json-ld";
 import {
   getRating,
@@ -16,6 +18,7 @@ import {
   getRestaurantSummary,
   normalizeAuthenticity,
   normalizeCuisineType,
+  getStationLabel,
   parsePhotoReferences,
   photoSrc,
   type RestaurantRow,
@@ -106,6 +109,7 @@ export default async function RestaurantDetailPage({ params }: Props) {
   const name = getRestaurantName(restaurant, locale);
   const summary = getRestaurantSummary(restaurant, locale);
   const authenticityReason = locale === "zh" ? restaurant.authenticity_reason_zh : restaurant.authenticity_reason_ja;
+  const stationLabel = getStationLabel(restaurant, locale);
   const authenticity = normalizeAuthenticity(restaurant.authenticity);
   const cuisineType = normalizeCuisineType(restaurant.cuisine_type);
   
@@ -253,7 +257,13 @@ export default async function RestaurantDetailPage({ params }: Props) {
         <div className="w-full md:w-80 shrink-0">
           <div className="sticky top-24 p-6 bg-white border border-warm-200 rounded-xl shadow-sm">
             <div className="mb-4 flex items-center justify-between">
-              <h3 className="font-bold text-lg text-ink-900">餐厅信息</h3>
+              <h3 className="font-bold text-lg text-ink-900">{locale === "zh" ? "餐厅信息" : "店舗情報"}</h3>
+              <div className="flex items-center gap-2">
+              <ShareButton
+                title={name}
+                text={summary || undefined}
+                locale={locale}
+              />
               <FavoriteButton
                 restaurantId={restaurant.id}
                 initialFavorited={favoritedIds.has(restaurant.id)}
@@ -261,7 +271,15 @@ export default async function RestaurantDetailPage({ params }: Props) {
                 locale={locale}
                 className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-warm-200 transition-colors hover:border-vermilion-700"
               />
+              </div>
             </div>
+            <OpeningHours raw={restaurant.opening_hours} locale={locale} />
+            {stationLabel && (
+              <div className="mb-4 flex items-start gap-2 rounded-lg bg-warm-50 px-3 py-2 text-sm text-ink-700">
+                <TrainFront size={16} className="mt-0.5 shrink-0 text-vermilion-700" />
+                <span className="font-semibold">{stationLabel}</span>
+              </div>
+            )}
             <a
               href={restaurant.google_maps_url || `https://www.google.com/maps/search/?api=1&query=${restaurant.lat},${restaurant.lng}`}
               target="_blank"

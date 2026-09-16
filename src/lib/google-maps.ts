@@ -32,6 +32,11 @@ export interface GooglePlaceResult {
   url?: string;
   reviews?: GooglePlaceReview[];
   photos?: { photo_reference: string }[];
+  opening_hours?: {
+    // open_now 是拉取那一刻的快照，存下来毫无意义，只用 periods/weekday_text
+    periods?: { open?: { day: number; time: string }; close?: { day: number; time: string } }[];
+    weekday_text?: string[];
+  };
 }
 
 export async function textSearchPlaces(
@@ -102,7 +107,7 @@ export async function getPlaceDetails(placeId: string): Promise<GooglePlaceResul
   const url = new URL("https://maps.googleapis.com/maps/api/place/details/json");
   url.searchParams.append("place_id", placeId);
   // 需要的字段：名称,地址,评分,评论数,价格,电话,官网,Google地图链接,评论,照片,经纬度
-  url.searchParams.append("fields", "place_id,name,formatted_address,geometry,rating,user_ratings_total,price_level,formatted_phone_number,website,url,reviews,photos");
+  url.searchParams.append("fields", "place_id,name,formatted_address,geometry,rating,user_ratings_total,price_level,formatted_phone_number,website,url,reviews,photos,opening_hours");
   url.searchParams.append("key", API_KEY as string);
   url.searchParams.append("language", "ja"); 
   url.searchParams.append("reviews_sort", "newest"); // 获取最新评论

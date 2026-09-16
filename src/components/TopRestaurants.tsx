@@ -12,6 +12,7 @@ import {
   normalizeAuthenticity,
   normalizeCuisineType,
   normalizePriceLevel,
+  getStationLabel,
   parsePhotoReferences,
   photoSrc,
   type RestaurantRow,
@@ -125,7 +126,10 @@ export default async function TopRestaurants({ locale, title, limit = 6, sortMod
                 </div>
 
                 <div className="flex items-center gap-3 text-xs mb-4 text-ink-400">
-                  <span className="flex items-center gap-1"><MapPin size={12} /> {restaurant.ward || restaurant.city}</span>
+                  <span className="flex items-center gap-1">
+                    <MapPin size={12} />
+                    {getStationLabel(restaurant, locale) || restaurant.ward || restaurant.city}
+                  </span>
                   <span className={`cuisine-tag cuisine-${cuisineType}`}>{tc(cuisineType)}</span>
                   {priceLevel && <span>{tr(`price_level.${priceLevel}`)}</span>}
                 </div>
