@@ -1,5 +1,5 @@
 import { getDb } from "@/lib/cloudflare";
-import { auth } from "@/lib/auth";
+import { getCurrentUser } from "@/lib/session";
 import { getFavoritedIds } from "@/lib/favorites";
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
@@ -161,8 +161,7 @@ export default async function RestaurantsPage({
     console.error("Database query error:", error);
   }
 
-  const session = await auth();
-  const isLoggedIn = Boolean(session?.user?.id);
+  const isLoggedIn = Boolean(await getCurrentUser());
   const favoritedIds = await getFavoritedIds(restaurants.map((restaurant) => restaurant.id));
 
   const filterQuery = new URLSearchParams();

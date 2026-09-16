@@ -3,7 +3,7 @@ import { getMessages } from "next-intl/server";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { routing } from "@/i18n/routing";
-import { auth } from "@/lib/auth";
+import { getCurrentUser } from "@/lib/session";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 
@@ -61,13 +61,8 @@ export default async function LocaleLayout({ children, params }: Props) {
   }
 
   const messages = await getMessages();
-  const session = await auth();
-  const user = session?.user
-    ? {
-        name: session.user.name || null,
-        image: session.user.image || null,
-      }
-    : null;
+  const currentUser = await getCurrentUser();
+  const user = currentUser ? { name: currentUser.name, image: currentUser.image } : null;
 
   return (
     <NextIntlClientProvider messages={messages}>

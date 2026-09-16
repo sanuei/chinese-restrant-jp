@@ -1,5 +1,5 @@
 import { getDb } from "@/lib/cloudflare";
-import { auth } from "@/lib/auth";
+import { getCurrentUser } from "@/lib/session";
 import { getFavoritedIds } from "@/lib/favorites";
 import { getTranslations } from "next-intl/server";
 import Link from "next/link";
@@ -30,6 +30,7 @@ export default async function TopRestaurants({ locale, title, limit = 6, sortMod
   const tc = await getTranslations({ locale, namespace: "cuisine" });
   const ta = await getTranslations({ locale, namespace: "auth_badge" });
   const tr = await getTranslations({ locale, namespace: "restaurant" });
+  const th = await getTranslations({ locale, namespace: "home" });
 
   const orderByClause = sortMode === "new"
     ? "last_synced_at DESC, updated_at DESC, trusted_rating DESC"
@@ -47,8 +48,7 @@ export default async function TopRestaurants({ locale, title, limit = 6, sortMod
     console.error("Database query error:", error);
   }
 
-  const session = await auth();
-  const isLoggedIn = Boolean(session?.user?.id);
+  const isLoggedIn = Boolean(await getCurrentUser());
   const favoritedIds = await getFavoritedIds(restaurants.map((restaurant) => restaurant.id));
 
   // 开发环境如果没有数据，提供一个占位提示
@@ -70,7 +70,7 @@ export default async function TopRestaurants({ locale, title, limit = 6, sortMod
           {title}
         </h2>
         <Link href={`/${locale}/restaurants`} className="text-sm font-medium hover:underline text-vermilion-700">
-          查看全部
+          {th("see_all")}
         </Link>
       </div>
 

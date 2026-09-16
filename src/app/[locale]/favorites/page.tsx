@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { Heart, MapPin, Star } from "lucide-react";
-import { auth } from "@/lib/auth";
+import { getCurrentUser } from "@/lib/session";
 import { getDb } from "@/lib/cloudflare";
 import { getTranslations } from "next-intl/server";
 import FavoriteButton from "@/components/FavoriteButton";
@@ -33,9 +33,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function FavoritesPage({ params }: Props) {
   const { locale } = await params;
-  const session = await auth();
+  const user = await getCurrentUser();
 
-  if (!session?.user?.id) {
+  if (!user) {
     redirect(`/api/auth/signin?callbackUrl=${encodeURIComponent(`/${locale}/favorites`)}`);
   }
 
@@ -53,7 +53,7 @@ export default async function FavoritesPage({ params }: Props) {
         WHERE f.user_id = ? AND r.is_active = 1
         ORDER BY f.created_at DESC
       `)
-      .bind(session.user.id)
+      .bind(user.id)
       .all<RestaurantRow>();
     restaurants = results || [];
   } catch (error) {
