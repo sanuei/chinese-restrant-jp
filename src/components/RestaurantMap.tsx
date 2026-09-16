@@ -83,7 +83,15 @@ export default function RestaurantMap({ locale, restaurants, cuisineOptions, aut
     let cancelled = false;
 
     (async () => {
-      const maplibre = await import("maplibre-gl");
+      // 用原生动态 import 从 public/ 加载，webpackIgnore 让 webpack 不要接管这行。
+      // 被 webpack 打包后 maplibre 的 Web Worker 相对路径会失效（worker 请求落到
+      // 404 页面，拿回 HTML，地图永远卡在 loading）。三个 .mjs 挨在 /public 下时
+      // import.meta.url 的相对解析天然正确。
+      const maplibre = (await import(
+        /* webpackIgnore: true */
+        // @ts-expect-error 运行时才存在的 URL（由 scripts/copy-maplibre.mjs 放进 public/），TS 无法静态解析
+        "/maplibre-gl.mjs"
+      )) as typeof import("maplibre-gl");
       if (cancelled || !containerRef.current || mapRef.current) return;
 
       const map = new maplibre.Map({

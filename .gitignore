@@ -46,3 +46,6 @@ next-env.d.ts
 
 # collected data (candidates, sync results)
 data/
+
+# maplibre 运行时产物，由 scripts/copy-maplibre.mjs 在构建时从 node_modules 生成
+/public/maplibre-gl*.mjs

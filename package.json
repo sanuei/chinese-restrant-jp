@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "opennextjs-cloudflare build",
-    "build:next": "next build",
+    "build:next": "node scripts/copy-maplibre.mjs && next build",
     "start": "next start",
     "lint": "eslint",
     "collect:tokyo23": "node scripts/batch-collect.mjs --phase=collect",
