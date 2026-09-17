@@ -19,7 +19,11 @@
     "section_new": "最新掲載",
     "section_trending": "今週の人気ランキング",
     "section_trending_hint": "直近7日間の閲覧数によるランキング（5分ごとに更新）",
-    "see_all": "すべて見る"
+    "see_all": "すべて見る",
+    "pagination_label": "東京の人気店のページ切り替え",
+    "previous_page": "前のページ",
+    "next_page": "次のページ",
+    "page_status": "{current} / {total} ページ"
   },
   "auth_badge": {
     "authentic": "ガチ中華",

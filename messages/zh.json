@@ -19,7 +19,11 @@
     "section_new": "最新收录",
     "section_trending": "本周热门榜",
     "section_trending_hint": "根据最近 7 天的浏览热度排名，每 5 分钟更新",
-    "see_all": "查看全部"
+    "see_all": "查看全部",
+    "pagination_label": "东京口碑推荐分页",
+    "previous_page": "上一页",
+    "next_page": "下一页",
+    "page_status": "{current} / {total} 页"
   },
   "auth_badge": {
     "authentic": "正宗中华",

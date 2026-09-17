@@ -3,7 +3,7 @@ import { getCurrentUser } from "@/lib/session";
 import { getFavoritedIds } from "@/lib/favorites";
 import { getTranslations } from "next-intl/server";
 import Link from "next/link";
-import { Star, MapPin } from "lucide-react";
+import { ChevronLeft, ChevronRight, Star, MapPin } from "lucide-react";
 import FavoriteButton from "@/components/FavoriteButton";
 import {
   getRating,
@@ -24,10 +24,19 @@ type Props = {
   locale: string;
   title: string;
   limit?: number;
+  page?: number;
+  paginated?: boolean;
   sortMode?: SortMode;
 };
 
-export default async function TopRestaurants({ locale, title, limit = 6, sortMode = "top" }: Props) {
+export default async function TopRestaurants({
+  locale,
+  title,
+  limit = 6,
+  page = 1,
+  paginated = false,
+  sortMode = "top",
+}: Props) {
   const tc = await getTranslations({ locale, namespace: "cuisine" });
   const ta = await getTranslations({ locale, namespace: "auth_badge" });
   const tr = await getTranslations({ locale, namespace: "restaurant" });
@@ -39,14 +48,26 @@ export default async function TopRestaurants({ locale, title, limit = 6, sortMod
 
   const db = await getDb();
   let restaurants: RestaurantRow[] = [];
+  let currentPage = Math.max(1, page);
+  let totalPages = 1;
 
   try {
+    if (paginated) {
+      const total = await db.prepare(
+        `SELECT COUNT(*) AS count
+         FROM restaurants
+         WHERE is_active = 1 AND authenticity = 'authentic'`
+      ).first<{ count: number }>();
+      totalPages = Math.max(1, Math.ceil((total?.count || 0) / limit));
+      currentPage = Math.min(currentPage, totalPages);
+    }
+
     const { results = [] } = await db.prepare(
       `SELECT * FROM restaurants
        WHERE is_active = 1 AND authenticity = 'authentic'
        ORDER BY ${orderByClause}
-       LIMIT ?`
-    ).bind(limit).all<RestaurantRow>();
+       LIMIT ? OFFSET ?`
+    ).bind(limit, paginated ? (currentPage - 1) * limit : 0).all<RestaurantRow>();
     restaurants = results || [];
   } catch (error) {
     console.error("Database query error:", error);
@@ -68,7 +89,7 @@ export default async function TopRestaurants({ locale, title, limit = 6, sortMod
   }
 
   return (
-    <section className="py-12">
+    <section id={paginated ? "top-restaurants" : undefined} className="py-12 scroll-mt-20">
       <div className="flex items-center justify-between mb-8">
         <h2 className="font-serif font-bold text-2xl sm:text-3xl text-ink-900">
           {title}
@@ -155,6 +176,44 @@ export default async function TopRestaurants({ locale, title, limit = 6, sortMod
           );
         })}
       </div>
+
+      {paginated && totalPages > 1 && (
+        <nav className="mt-8 flex items-center justify-center gap-3" aria-label={th("pagination_label")}>
+          {currentPage > 1 ? (
+            <Link
+              href={`/${locale}?topPage=${currentPage - 1}#top-restaurants`}
+              className="inline-flex items-center gap-1 rounded-lg border border-warm-200 bg-white px-4 py-2 text-sm font-medium text-ink-700 transition-colors hover:border-vermilion-300 hover:text-vermilion-700"
+            >
+              <ChevronLeft size={16} />
+              {th("previous_page")}
+            </Link>
+          ) : (
+            <span className="inline-flex cursor-not-allowed items-center gap-1 rounded-lg border border-warm-200 bg-warm-50 px-4 py-2 text-sm font-medium text-ink-400 opacity-60">
+              <ChevronLeft size={16} />
+              {th("previous_page")}
+            </span>
+          )}
+
+          <span className="min-w-20 text-center text-sm text-ink-400">
+            {th("page_status", { current: currentPage, total: totalPages })}
+          </span>
+
+          {currentPage < totalPages ? (
+            <Link
+              href={`/${locale}?topPage=${currentPage + 1}#top-restaurants`}
+              className="inline-flex items-center gap-1 rounded-lg border border-warm-200 bg-white px-4 py-2 text-sm font-medium text-ink-700 transition-colors hover:border-vermilion-300 hover:text-vermilion-700"
+            >
+              {th("next_page")}
+              <ChevronRight size={16} />
+            </Link>
+          ) : (
+            <span className="inline-flex cursor-not-allowed items-center gap-1 rounded-lg border border-warm-200 bg-warm-50 px-4 py-2 text-sm font-medium text-ink-400 opacity-60">
+              {th("next_page")}
+              <ChevronRight size={16} />
+            </span>
+          )}
+        </nav>
+      )}
     </section>
   );
 }

@@ -10,7 +10,15 @@ import { getDb } from "@/lib/cloudflare";
 
 export const dynamic = "force-dynamic";
 
-type Props = { params: Promise<{ locale: string }> };
+type Props = {
+  params: Promise<{ locale: string }>;
+  searchParams: Promise<{ topPage?: string | string[] }>;
+};
+
+function parsePage(value: string | string[] | undefined): number {
+  const parsed = Number.parseInt(Array.isArray(value) ? value[0] : value || "1", 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 1;
+}
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale } = await params;
@@ -73,8 +81,10 @@ async function getDishTypeCounts(): Promise<Record<string, number>> {
   }
 }
 
-export default async function HomePage({ params }: Props) {
+export default async function HomePage({ params, searchParams }: Props) {
   const { locale } = await params;
+  const query = await searchParams;
+  const topPage = parsePage(query.topPage);
   const t = await getTranslations({ locale, namespace: "home" });
   const [cuisineCounts, dishTypeCounts] = await Promise.all([getCuisineCounts(), getDishTypeCounts()]);
 
@@ -87,7 +97,14 @@ export default async function HomePage({ params }: Props) {
         <div className="divider-chinese" />
         <TrendingRanking locale={locale} />
         <div className="divider-chinese" />
-        <TopRestaurants locale={locale} title={t("section_top")} limit={9} sortMode="top" />
+        <TopRestaurants
+          locale={locale}
+          title={t("section_top")}
+          limit={9}
+          page={topPage}
+          paginated
+          sortMode="top"
+        />
         <div className="divider-chinese" />
         <TopRestaurants locale={locale} title={t("section_new")} limit={6} sortMode="new" />
       </div>
