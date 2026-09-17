@@ -1,6 +1,5 @@
 import { useTranslations } from "next-intl";
 import Link from "next/link";
-import Image from "next/image";
 import SocialLinks from "@/components/SocialLinks";
 
 type Props = { locale: string };
@@ -14,7 +13,10 @@ export default function Footer({ locale }: Props) {
         <div className="flex flex-col md:flex-row justify-between items-center gap-6">
           <div className="flex flex-col items-center md:items-start gap-2">
             <Link href={`/${locale}`} className="flex items-center gap-2">
-              <Image
+              {/* 不用 next/image：OpenNext + Workers 上没有图片优化器，
+                  /_next/image 在生产返回 500，logo 会变成裂图 */}
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
                 src="/brand/zhenwei-logo-mark-192.png"
                 alt=""
                 width={30}

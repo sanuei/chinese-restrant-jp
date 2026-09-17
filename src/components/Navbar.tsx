@@ -5,7 +5,6 @@ import { useRouter, usePathname } from "next/navigation";
 import { useState } from "react";
 import { Menu, X, Globe, LogOut, ShieldCheck } from "lucide-react";
 import Link from "next/link";
-import Image from "next/image";
 import { googleSignIn, userSignOut } from "@/lib/auth-actions";
 
 type NavUser = { name: string | null; image: string | null; isAdmin: boolean };
@@ -43,13 +42,15 @@ export default function Navbar({ locale, user }: Props) {
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
           <Link href={`/${locale}`} className="flex items-center gap-2 shrink-0">
-            <Image
+            {/* 走 public/ 直出、不用 next/image：OpenNext + Workers 上没有可用的图片优化器，
+                /_next/image 在生产返回 500（error 1101），logo 会变成裂图 */}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
               src="/brand/zhenwei-logo-mark-192.png"
               alt=""
               width={38}
               height={38}
               className="h-9 w-9 object-contain"
-              priority
             />
             <div className="hidden sm:block">
               <div className="font-serif font-black text-base leading-tight"
