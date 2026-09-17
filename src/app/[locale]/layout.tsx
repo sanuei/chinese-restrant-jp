@@ -6,6 +6,7 @@ import { routing } from "@/i18n/routing";
 import { getCurrentUser } from "@/lib/session";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
+import { isAdminEmail } from "@/lib/admin-auth";
 
 type Props = {
   children: React.ReactNode;
@@ -62,7 +63,9 @@ export default async function LocaleLayout({ children, params }: Props) {
 
   const messages = await getMessages();
   const currentUser = await getCurrentUser();
-  const user = currentUser ? { name: currentUser.name, image: currentUser.image } : null;
+  const user = currentUser
+    ? { name: currentUser.name, image: currentUser.image, isAdmin: isAdminEmail(currentUser.email) }
+    : null;
 
   return (
     <NextIntlClientProvider messages={messages}>

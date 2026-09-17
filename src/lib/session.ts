@@ -4,6 +4,7 @@ import { auth } from "@/lib/auth";
 
 export type CurrentUser = {
   id: string;
+  email: string | null;
   name: string | null;
   image: string | null;
 };
@@ -32,6 +33,7 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
 
   return {
     id: session.user.id,
+    email: session.user.email ?? null,
     name: session.user.name ?? null,
     image: session.user.image ?? null,
   };

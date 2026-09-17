@@ -3,12 +3,12 @@
 import { useTranslations } from "next-intl";
 import { useRouter, usePathname } from "next/navigation";
 import { useState } from "react";
-import { Menu, X, Globe, LogOut } from "lucide-react";
+import { Menu, X, Globe, LogOut, ShieldCheck } from "lucide-react";
 import Link from "next/link";
 import { googleSignIn, userSignOut } from "@/lib/auth-actions";
 import { BRAND_ICON as BrandIcon } from "@/lib/cuisine-icons";
 
-type NavUser = { name: string | null; image: string | null };
+type NavUser = { name: string | null; image: string | null; isAdmin: boolean };
 type Props = { locale: string; user: NavUser | null };
 
 export default function Navbar({ locale, user }: Props) {
@@ -96,6 +96,15 @@ export default function Navbar({ locale, user }: Props) {
                     </span>
                   )}
                   <span className="max-w-[100px] truncate text-sm font-medium text-ink-700">{user.name}</span>
+                  {user.isAdmin && (
+                    <Link
+                      href="/admin"
+                      className="flex items-center gap-1 rounded-md px-2 py-1.5 text-sm font-medium text-ink-500 transition-colors hover:bg-warm-50 hover:text-vermilion-700"
+                    >
+                      <ShieldCheck size={16} />
+                      {t("admin")}
+                    </Link>
+                  )}
                   <form action={userSignOut.bind(null, pathname)}>
                     <button
                       type="submit"
@@ -142,24 +151,36 @@ export default function Navbar({ locale, user }: Props) {
             ))}
             <div className="mt-2 border-t px-2 pt-3" style={{ borderTopColor: "var(--color-warm-200)" }}>
               {user ? (
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    {user.image ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={user.image} alt={user.name || ""} className="h-8 w-8 rounded-full" referrerPolicy="no-referrer" />
-                    ) : (
-                      <span className="flex h-8 w-8 items-center justify-center rounded-full bg-warm-100 text-xs font-bold text-ink-700">
-                        {(user.name || "U").slice(0, 1)}
-                      </span>
-                    )}
-                    <span className="truncate text-sm font-medium text-ink-700">{user.name}</span>
+                <div>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      {user.image ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={user.image} alt={user.name || ""} className="h-8 w-8 rounded-full" referrerPolicy="no-referrer" />
+                      ) : (
+                        <span className="flex h-8 w-8 items-center justify-center rounded-full bg-warm-100 text-xs font-bold text-ink-700">
+                          {(user.name || "U").slice(0, 1)}
+                        </span>
+                      )}
+                      <span className="truncate text-sm font-medium text-ink-700">{user.name}</span>
+                    </div>
+                    <form action={userSignOut.bind(null, pathname)}>
+                      <button type="submit" className="flex items-center gap-1 text-sm text-ink-400">
+                        <LogOut size={16} />
+                        {t("logout")}
+                      </button>
+                    </form>
                   </div>
-                  <form action={userSignOut.bind(null, pathname)}>
-                    <button type="submit" className="flex items-center gap-1 text-sm text-ink-400">
-                      <LogOut size={16} />
-                      {t("logout")}
-                    </button>
-                  </form>
+                  {user.isAdmin && (
+                    <Link
+                      href="/admin"
+                      className="mt-3 flex items-center gap-2 rounded-md bg-warm-50 px-3 py-2.5 text-sm font-medium text-ink-700"
+                      onClick={() => setMenuOpen(false)}
+                    >
+                      <ShieldCheck size={16} className="text-vermilion-700" />
+                      {t("admin")}
+                    </Link>
+                  )}
                 </div>
               ) : (
                 <form action={googleSignIn.bind(null, pathname)}>
