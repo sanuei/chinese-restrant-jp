@@ -1,4 +1,4 @@
-import { consumeGoogleQuota } from "@/lib/google-quota";
+import { consumeQuota } from "@/lib/google-quota";
 /**
  * Google Maps Places API 封装
  * 使用官方 Places API (New) 或旧版 Text Search & Place Details
@@ -43,7 +43,7 @@ export async function textSearchPlaces(
   query: string,
   options: { lat?: number; lng?: number; radius?: number } = {}
 ): Promise<GooglePlaceResult[]> {
-  if (!(await consumeGoogleQuota("textsearch"))) {
+  if (!(await consumeQuota("textsearch"))) {
     throw new Error("Google API 本月免费额度已用完，已自动停止调用以避免产生费用");
   }
 
@@ -71,7 +71,7 @@ export async function textSearchPlaces(
 export async function nearbySearchPlaces(
   options: { lat: number; lng: number; radius?: number; keyword?: string }
 ): Promise<GooglePlaceResult[]> {
-  if (!(await consumeGoogleQuota("nearbysearch"))) {
+  if (!(await consumeQuota("nearbysearch"))) {
     throw new Error("Google API 本月免费额度已用完，已自动停止调用以避免产生费用");
   }
 
@@ -100,7 +100,7 @@ export async function searchRestaurants(query: string, city: string = "tokyo"): 
 }
 
 export async function getPlaceDetails(placeId: string): Promise<GooglePlaceResult | null> {
-  if (!(await consumeGoogleQuota("details"))) {
+  if (!(await consumeQuota("details"))) {
     throw new Error("Google API 本月免费额度已用完，已自动停止调用以避免产生费用");
   }
 

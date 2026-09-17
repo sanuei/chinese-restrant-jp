@@ -11,6 +11,8 @@
  * 并且在正文为空时给出可诊断的报错，而不是让它伪装成 JSON 解析失败。
  */
 
+import { consumeQuota } from "@/lib/google-quota";
+
 const DEFAULT_API_BASE = "https://api.deepseek.com";
 const DEFAULT_MODEL = "deepseek-flash";
 
@@ -46,6 +48,12 @@ async function requestCompletion(
 ): Promise<ChatCompletion> {
   const { apiKey, apiBase, model } = getConfig();
   if (!apiKey) throw new Error("Missing DEEPSEEK_API_KEY");
+
+  // AI 也要过闸门：DeepSeek 是余额制，被刷就是真金白银。
+  // 计数放在真正发请求的地方（不是逻辑调用处），重试也会各算一次。
+  if (!(await consumeQuota("ai"))) {
+    throw new Error("AI 本月调用额度已用完，已自动停止调用以避免产生费用");
+  }
 
   const response = await fetch(`${apiBase}/chat/completions`, {
     method: "POST",

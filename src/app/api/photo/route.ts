@@ -1,5 +1,5 @@
 import { getImagesBucket } from "@/lib/cloudflare";
-import { consumeGoogleQuota } from "@/lib/google-quota";
+import { consumeQuota } from "@/lib/google-quota";
 
 /**
  * 餐厅照片代理 / 缓存路由
@@ -92,7 +92,7 @@ export async function GET(request: Request) {
 
   // 本月额度用完就直接回退占位图。Photo 是按次计费最凶的那个 SKU，
   // 宁可少显示一张图也不能再产生费用。
-  if (!(await consumeGoogleQuota("photo"))) {
+  if (!(await consumeQuota("photo"))) {
     return Response.redirect(FALLBACK_IMAGE, 302);
   }
 

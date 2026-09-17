@@ -132,6 +132,14 @@ export default function VerifyTool({ locale, initialUrl = "" }: { locale: string
         body: JSON.stringify({ url, locale }),
       });
       const payload = await response.json();
+      // 未登录：鉴定会花钱（Google Place Details + AI），所以服务端会直接 401。
+      // 按站内既有做法（收藏按钮）把用户送去登录，并带上回跳地址。
+      if (response.status === 401 || payload?.error === "unauthorized") {
+        window.location.href = `/api/auth/signin?callbackUrl=${encodeURIComponent(
+          window.location.pathname + window.location.search
+        )}`;
+        return;
+      }
       if (!response.ok) throw new Error(payload.error || "Verify failed");
       setResult(payload as VerifyResult);
     } catch (e) {

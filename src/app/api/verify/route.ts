@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/cloudflare";
+import { getCurrentUser } from "@/lib/session";
 import { resolveGoogleMapsInput } from "@/lib/google-maps-url";
 import {
   buildRestaurantSyncSnapshot,
@@ -90,6 +91,13 @@ function getVerdict(snapshot: VerifiedSnapshot): string {
 
 export async function POST(req: NextRequest) {
   try {
+    // 鉴定一次 = Google Place Details（+可能 1~2 次 Search）+ 一次 AI 调用，都是钱。
+    // 必须在服务端挡：只把页面上的按钮藏起来拦不住脚本。
+    const user = await getCurrentUser();
+    if (!user) {
+      return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+    }
+
     const body = (await req.json()) as VerifyRequestBody;
     const sourceUrl = String(body.url || "").trim();
     if (!sourceUrl) {

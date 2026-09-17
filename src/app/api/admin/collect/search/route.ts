@@ -1,4 +1,4 @@
-import { consumeGoogleQuota } from "@/lib/google-quota";
+import { consumeQuota } from "@/lib/google-quota";
 import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/cloudflare";
 import { isAdminRequest } from "@/lib/admin-auth";
@@ -58,7 +58,7 @@ async function searchGoogle(query: string): Promise<GoogleTextSearchResult[]> {
   const apiKey = process.env.GOOGLE_MAPS_API_KEY;
   if (!apiKey) throw new Error("Missing GOOGLE_MAPS_API_KEY");
 
-  if (!(await consumeGoogleQuota("textsearch"))) {
+  if (!(await consumeQuota("textsearch"))) {
     throw new Error("Google API 本月免费额度已用完，已自动停止调用以避免产生费用");
   }
 
