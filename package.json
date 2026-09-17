@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "opennextjs-cloudflare build",
+    "build": "node scripts/copy-maplibre.mjs && opennextjs-cloudflare build",
     "build:next": "node scripts/copy-maplibre.mjs && next build",
     "start": "next start",
     "lint": "eslint",
@@ -12,9 +12,9 @@
     "collect:sync": "node scripts/batch-collect.mjs --phase=sync",
     "collect:refresh": "node scripts/batch-collect.mjs --phase=refresh",
     "collect:admin": "node scripts/interactive-collect.mjs",
-    "cf:build": "opennextjs-cloudflare build",
+    "cf:build": "node scripts/copy-maplibre.mjs && opennextjs-cloudflare build",
     "cf:preview": "opennextjs-cloudflare preview",
-    "deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy"
+    "deploy": "node scripts/copy-maplibre.mjs && opennextjs-cloudflare build && opennextjs-cloudflare deploy"
   },
   "dependencies": {
     "class-variance-authority": "^0.7.1",
