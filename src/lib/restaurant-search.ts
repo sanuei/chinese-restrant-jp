@@ -11,6 +11,8 @@ const SEARCH_COLUMNS = [
   "name_original",
   "address",
   "ward",
+  "nearest_station",
+  "nearest_station_zh",
   "cuisine_type",
   "ai_summary_zh",
   "ai_summary_ja",

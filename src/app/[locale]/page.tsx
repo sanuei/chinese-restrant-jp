@@ -4,9 +4,11 @@ import HeroSection from "@/components/HeroSection";
 import TopRestaurants from "@/components/TopRestaurants";
 import TrendingRanking from "@/components/TrendingRanking";
 import DishTypeGrid from "@/components/DishTypeGrid";
+import StationGrid from "@/components/StationGrid";
 import JsonLd from "@/components/JsonLd";
 import { buildOrganizationJsonLd } from "@/lib/json-ld";
 import { getDb } from "@/lib/cloudflare";
+import { stationAreas, type StationAreaKey } from "@/lib/station-areas";
 
 export const dynamic = "force-dynamic";
 
@@ -81,12 +83,42 @@ async function getDishTypeCounts(): Promise<Record<string, number>> {
   }
 }
 
+async function getStationAreaCounts(): Promise<Record<StationAreaKey, number>> {
+  const counts = Object.fromEntries(stationAreas.map(({ key }) => [key, 0])) as Record<StationAreaKey, number>;
+
+  try {
+    const db = await getDb();
+    const result = await db
+      .prepare(
+        `SELECT nearest_station, COUNT(*) AS count
+         FROM restaurants
+         WHERE is_active = 1 AND authenticity = 'authentic' AND nearest_station IS NOT NULL
+         GROUP BY nearest_station`
+      )
+      .all<{ nearest_station: string; count: number }>();
+
+    for (const row of result.results ?? []) {
+      for (const station of stationAreas) {
+        if (row.nearest_station.includes(station.searchTerm)) counts[station.key] += row.count;
+      }
+    }
+  } catch {
+    // 首页其他模块仍可正常渲染。
+  }
+
+  return counts;
+}
+
 export default async function HomePage({ params, searchParams }: Props) {
   const { locale } = await params;
   const query = await searchParams;
   const topPage = parsePage(query.topPage);
   const t = await getTranslations({ locale, namespace: "home" });
-  const [cuisineCounts, dishTypeCounts] = await Promise.all([getCuisineCounts(), getDishTypeCounts()]);
+  const [cuisineCounts, dishTypeCounts, stationAreaCounts] = await Promise.all([
+    getCuisineCounts(),
+    getDishTypeCounts(),
+    getStationAreaCounts(),
+  ]);
 
   return (
     <>
@@ -94,6 +126,8 @@ export default async function HomePage({ params, searchParams }: Props) {
       <HeroSection locale={locale} counts={cuisineCounts} />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <DishTypeGrid locale={locale} counts={dishTypeCounts} />
+        <div className="divider-chinese" />
+        <StationGrid locale={locale} counts={stationAreaCounts} />
         <div className="divider-chinese" />
         <TrendingRanking locale={locale} />
         <div className="divider-chinese" />
