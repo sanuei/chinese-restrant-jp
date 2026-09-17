@@ -1,6 +1,19 @@
 import AdminNav from "@/components/AdminNav";
+import { headers } from "next/headers";
+import { redirect } from "next/navigation";
+import { auth } from "@/lib/auth";
+import { isAdminEmail } from "@/lib/admin-auth";
 
-export default function AdminLayout({ children }: { children: React.ReactNode }) {
+export default async function AdminLayout({ children }: { children: React.ReactNode }) {
+  const pathname = (await headers()).get("x-admin-pathname") || "/admin";
+
+  if (pathname !== "/admin/login") {
+    const session = await auth();
+    if (!isAdminEmail(session?.user?.email)) {
+      redirect(`/admin/login?next=${encodeURIComponent(pathname)}`);
+    }
+  }
+
   return (
     <div className="min-h-screen bg-gray-100">
       <header className="bg-gray-900 text-white shadow-lg">

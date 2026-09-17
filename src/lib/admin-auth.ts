@@ -1,28 +1,20 @@
-const COOKIE_NAME = "gachi_admin_session";
+import type { NextRequest } from "next/server";
+import { auth } from "@/lib/auth";
 
-function getAdminPassword(): string {
-  return process.env.ADMIN_PASSWORD || process.env.ADMIN_SECRET || "";
+export const ADMIN_EMAIL = "sanuei.yann@gmail.com";
+
+export function isAdminEmail(email: string | null | undefined): boolean {
+  return email?.trim().toLowerCase() === ADMIN_EMAIL;
 }
 
-async function sha256Hex(value: string): Promise<string> {
-  const bytes = new TextEncoder().encode(value);
-  const hash = await crypto.subtle.digest("SHA-256", bytes);
-  return Array.from(new Uint8Array(hash))
-    .map((byte) => byte.toString(16).padStart(2, "0"))
-    .join("");
-}
+/**
+ * Browser requests use the Google session. ADMIN_SECRET remains available only
+ * for trusted server-side maintenance scripts that cannot complete OAuth.
+ */
+export async function isAdminRequest(req: NextRequest): Promise<boolean> {
+  const secret = process.env.ADMIN_SECRET;
+  if (secret && req.headers.get("authorization") === `Bearer ${secret}`) return true;
 
-export function getAdminSessionCookieName(): string {
-  return COOKIE_NAME;
-}
-
-export async function getExpectedAdminSessionValue(): Promise<string> {
-  const password = getAdminPassword();
-  const secret = process.env.ADMIN_SECRET || "gachi-admin";
-  return sha256Hex(`gachi-admin:${password}:${secret}`);
-}
-
-export async function verifyAdminPassword(password: string): Promise<boolean> {
-  const expected = getAdminPassword();
-  return Boolean(expected) && password === expected;
+  const session = await auth();
+  return isAdminEmail(session?.user?.email);
 }

@@ -1,77 +1,55 @@
-"use client";
+import { redirect } from "next/navigation";
+import { auth } from "@/lib/auth";
+import { adminGoogleSignIn } from "@/lib/auth-actions";
+import { ADMIN_EMAIL, isAdminEmail } from "@/lib/admin-auth";
 
-import { Suspense, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
-import { LockKeyhole, Loader2 } from "lucide-react";
+type Props = { searchParams: Promise<{ next?: string | string[] }> };
 
-function AdminLoginContent() {
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
+function getNextPath(value: string | string[] | undefined): string {
+  const path = Array.isArray(value) ? value[0] : value;
+  return path?.startsWith("/admin") && !path.startsWith("//") ? path : "/admin";
+}
 
-  async function submitLogin(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setLoading(true);
-    setError("");
-    try {
-      const response = await fetch("/api/admin/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ password }),
-      });
-      const payload = await response.json();
-      if (!response.ok) throw new Error(payload.error || "登录失败");
-      router.push(searchParams.get("next") || "/admin");
-      router.refresh();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "登录失败");
-    } finally {
-      setLoading(false);
-    }
-  }
+export default async function AdminLoginPage({ searchParams }: Props) {
+  const session = await auth();
+  const { next } = await searchParams;
+  const nextPath = getNextPath(next);
+
+  if (isAdminEmail(session?.user?.email)) redirect(nextPath);
+
+  const signInAction = adminGoogleSignIn.bind(null, nextPath);
 
   return (
     <div className="mx-auto flex min-h-[60vh] max-w-md items-center">
-      <form onSubmit={submitLogin} className="w-full rounded-xl border border-warm-200 bg-white p-6 shadow-sm">
-        <div className="mb-5 flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-vermilion-50 text-vermilion-700">
-            <LockKeyhole size={20} />
-          </div>
-          <div>
-            <h1 className="text-xl font-bold text-gray-900">管理后台登录</h1>
-            <p className="text-sm text-gray-500">请输入管理密码继续。</p>
-          </div>
+      <div className="w-full rounded-xl border border-warm-200 bg-white p-6 shadow-sm">
+        <div className="mb-6">
+          <h1 className="text-xl font-bold text-gray-900">管理后台登录</h1>
+          <p className="mt-1 text-sm text-gray-500">使用指定的 Google 管理员账号继续。</p>
         </div>
 
-        <label className="block">
-          <span className="mb-1 block text-xs text-gray-500">密码</span>
-          <input
-            type="password"
-            value={password}
-            onChange={(event) => setPassword(event.target.value)}
-            className="w-full rounded-lg border border-warm-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-vermilion-500/30"
-            autoFocus
-          />
-        </label>
+        {session?.user?.email && (
+          <p className="mb-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
+            当前账号 {session.user.email} 没有后台访问权限，请切换账号。
+          </p>
+        )}
 
-        {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
+        <form action={signInAction}>
+          <button
+            type="submit"
+            className="inline-flex w-full items-center justify-center gap-3 rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-800 transition-colors hover:bg-gray-50"
+          >
+            <svg aria-hidden="true" viewBox="0 0 24 24" className="h-5 w-5">
+              <path fill="#4285F4" d="M21.6 12.2c0-.7-.1-1.4-.2-2H12v3.9h5.4a4.6 4.6 0 0 1-2 3v2.5h3.2c1.9-1.7 3-4.3 3-7.4Z" />
+              <path fill="#34A853" d="M12 22c2.7 0 5-.9 6.6-2.4l-3.2-2.5c-.9.6-2 1-3.4 1a5.8 5.8 0 0 1-5.5-4H3.2v2.6A10 10 0 0 0 12 22Z" />
+              <path fill="#FBBC05" d="M6.5 14.1a6 6 0 0 1 0-4.2V7.3H3.2a10 10 0 0 0 0 9.4l3.3-2.6Z" />
+              <path fill="#EA4335" d="M12 5.9c1.5 0 2.8.5 3.8 1.5l2.9-2.8A9.7 9.7 0 0 0 3.2 7.3l3.3 2.6a5.8 5.8 0 0 1 5.5-4Z" />
+            </svg>
+            使用 Google 登录
+          </button>
+        </form>
 
-        <button type="submit" disabled={loading || !password}
-          className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-gray-900 px-4 py-2.5 text-sm font-medium text-white disabled:opacity-60">
-          {loading && <Loader2 className="h-4 w-4 animate-spin" />}
-          登录
-        </button>
-      </form>
+        <p className="mt-4 text-center text-xs text-gray-400">仅允许 {ADMIN_EMAIL}</p>
+      </div>
     </div>
-  );
-}
-
-export default function AdminLoginPage() {
-  return (
-    <Suspense fallback={<div className="p-12 text-center text-gray-400">加载中...</div>}>
-      <AdminLoginContent />
-    </Suspense>
   );
 }

@@ -64,9 +64,7 @@ function AdminRestaurantsContent() {
     setLoading(true);
     try {
       const qs = new URLSearchParams(params).toString();
-      const res = await fetch(`/api/admin/restaurants?${qs}`, {
-        headers: { Authorization: `Bearer ${process.env.NEXT_PUBLIC_ADMIN_TOKEN}` },
-      });
+      const res = await fetch(`/api/admin/restaurants?${qs}`);
       if (!res.ok) throw new Error("fetch failed");
       const json = await res.json();
       setData(json.data);
@@ -101,7 +99,6 @@ function AdminRestaurantsContent() {
     if (!confirm(`确定删除 "${name}"？`)) return;
     const res = await fetch(`/api/admin/restaurants/${id}`, {
       method: "DELETE",
-      headers: { Authorization: `Bearer ${process.env.NEXT_PUBLIC_ADMIN_TOKEN}` },
     });
     if (res.ok) { setData(prev => prev.filter(r => r.id !== id)); }
     else { alert("删除失败"); }
@@ -118,7 +115,6 @@ function AdminRestaurantsContent() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${process.env.NEXT_PUBLIC_ADMIN_TOKEN}`,
         },
         body: JSON.stringify({ place_id: restaurant.id }),
       });

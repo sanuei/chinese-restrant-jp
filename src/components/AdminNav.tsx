@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
+import { userSignOut } from "@/lib/auth-actions";
 
 const nav = [
   { href: "/admin", label: "仪表盘", icon: "📊" },
@@ -14,16 +15,13 @@ const nav = [
 
 export default function AdminNav() {
   const pathname = usePathname();
-  const router = useRouter();
 
   if (pathname === "/admin/login") {
     return null;
   }
 
   async function logout() {
-    await fetch("/api/admin/logout", { method: "POST" });
-    router.push("/admin/login");
-    router.refresh();
+    await userSignOut("/admin/login");
   }
 
   return (

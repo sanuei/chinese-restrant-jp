@@ -1,6 +1,7 @@
 import { consumeGoogleQuota } from "@/lib/google-quota";
 import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/cloudflare";
+import { isAdminRequest } from "@/lib/admin-auth";
 
 type SearchBody = {
   areas?: string[];
@@ -101,8 +102,7 @@ async function markExistingCandidates(candidates: Candidate[]): Promise<Candidat
 }
 
 export async function POST(req: NextRequest) {
-  const authHeader = req.headers.get("authorization");
-  if (authHeader !== `Bearer ${process.env.ADMIN_SECRET}`) {
+  if (!(await isAdminRequest(req))) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

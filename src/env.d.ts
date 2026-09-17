@@ -57,7 +57,6 @@ declare global {
       
       // Admin
       ADMIN_SECRET: string; // 用于保护 /api/admin/* 路由
-      NEXT_PUBLIC_ADMIN_TOKEN: string; // 公开暴露给客户端用于 admin 页面 API 调用
 
       // 用户登录（Auth.js + Google OAuth）
       AUTH_SECRET: string; // JWT 签名密钥

@@ -66,9 +66,7 @@ export default function EditRestaurantPage({ params }: { params: Promise<{ id: s
   const fetchData = useCallback(async (restaurantId: string) => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/admin/restaurants/${restaurantId}`, {
-        headers: { Authorization: `Bearer ${process.env.NEXT_PUBLIC_ADMIN_TOKEN}` },
-      });
+      const res = await fetch(`/api/admin/restaurants/${restaurantId}`);
       if (!res.ok) { router.push("/admin/restaurants"); return; }
       const json = await res.json();
       const r = json.restaurant;
@@ -143,7 +141,6 @@ export default function EditRestaurantPage({ params }: { params: Promise<{ id: s
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${process.env.NEXT_PUBLIC_ADMIN_TOKEN}`,
         },
         body: JSON.stringify(payload),
       });
@@ -167,7 +164,6 @@ export default function EditRestaurantPage({ params }: { params: Promise<{ id: s
       method: "PATCH",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${process.env.NEXT_PUBLIC_ADMIN_TOKEN}`,
       },
       body: JSON.stringify({ credibility_action: action }),
     });
@@ -178,7 +174,6 @@ export default function EditRestaurantPage({ params }: { params: Promise<{ id: s
     if (!confirm("确定删除这条评论？")) return;
     await fetch(`/api/admin/reviews/${reviewId}`, {
       method: "DELETE",
-      headers: { Authorization: `Bearer ${process.env.NEXT_PUBLIC_ADMIN_TOKEN}` },
     });
     setReviews(prev => prev.filter(r => r.id !== reviewId));
   };
@@ -187,7 +182,6 @@ export default function EditRestaurantPage({ params }: { params: Promise<{ id: s
     if (!confirm("确定删除此餐厅？（软删除，可恢复）")) return;
     const res = await fetch(`/api/admin/restaurants/${id}`, {
       method: "DELETE",
-      headers: { Authorization: `Bearer ${process.env.NEXT_PUBLIC_ADMIN_TOKEN}` },
     });
     if (res.ok) router.push("/admin/restaurants");
   };

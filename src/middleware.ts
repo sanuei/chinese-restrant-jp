@@ -1,27 +1,16 @@
 import createMiddleware from "next-intl/middleware";
 import { NextRequest, NextResponse } from "next/server";
-import { getAdminSessionCookieName, getExpectedAdminSessionValue } from "@/lib/admin-auth";
 import { routing } from "@/i18n/routing";
 
 const intlMiddleware = createMiddleware(routing);
 
-export default async function middleware(req: NextRequest) {
+export default function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
-  if (pathname.startsWith("/admin") && pathname !== "/admin/login") {
-    const session = req.cookies.get(getAdminSessionCookieName())?.value;
-    const expected = await getExpectedAdminSessionValue();
-    if (!session || session !== expected) {
-      const loginUrl = req.nextUrl.clone();
-      loginUrl.pathname = "/admin/login";
-      loginUrl.searchParams.set("next", pathname);
-      return NextResponse.redirect(loginUrl);
-    }
-    return NextResponse.next();
-  }
-
   if (pathname.startsWith("/admin")) {
-    return NextResponse.next();
+    const requestHeaders = new Headers(req.headers);
+    requestHeaders.set("x-admin-pathname", pathname);
+    return NextResponse.next({ request: { headers: requestHeaders } });
   }
 
   return intlMiddleware(req);
