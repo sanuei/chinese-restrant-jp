@@ -117,6 +117,8 @@ export default async function MapPage({ params }: Props) {
         openInMaps: isZh ? "导航" : "ナビ",
         reset: isZh ? "清除筛选" : "条件をクリア",
         loading: isZh ? "地图加载中…" : "地図を読み込み中…",
+        listTitle: isZh ? "餐厅列表" : "店舗リスト",
+        listHint: isZh ? "点一条 → 地图定位" : "項目をタップ → 地図が移動",
       }}
     />
   );
