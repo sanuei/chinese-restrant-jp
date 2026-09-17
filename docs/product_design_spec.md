@@ -27,7 +27,7 @@
 |--------|---------|
 | 语言 | 中文 + 日文双语（界面可切换） |
 | 起步城市 | 东京（23区优先，后扩关东） |
-| AI 供应商 | MiniMax（中国大陆节点） |
+| AI 供应商 | DeepSeek（deepseek-flash，OpenAI 兼容 chat/completions） |
 | 数据源 | Google Maps Places API 优先 |
 | 部署平台 | Cloudflare 全栈 |
 | 前端框架 | Next.js 14（导出静态/Edge Runtime） |

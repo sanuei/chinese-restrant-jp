@@ -23,8 +23,9 @@ const BATCH = Number(process.env.BATCH || 15);
 const LIMIT = Number(process.env.LIMIT || 0);
 const APPLY = process.env.APPLY === "1";
 
-const API_KEY = process.env.MINIMAX_API_KEY;
-const API_BASE = process.env.MINIMAX_API_BASE || "https://api.minimax.chat/v1";
+const API_KEY = process.env.DEEPSEEK_API_KEY;
+const API_BASE = process.env.DEEPSEEK_API_BASE || "https://api.deepseek.com";
+const MODEL = process.env.DEEPSEEK_MODEL || "deepseek-flash";
 
 const sq = (v) => (v == null ? "NULL" : `'${String(v).replace(/'/g, "''")}'`);
 
@@ -52,7 +53,7 @@ const SYSTEM = `你在给一个面向在日华人的中餐厅导航站补中文�
 严格返回 JSON 数组，不要 markdown，不要解释：
 [{"index": 0, "name_zh": "中文店名"}, ...]`;
 
-async function askMiniMax(items) {
+async function askDeepSeek(items) {
   const user = items
     .map(
       (r, i) =>
@@ -60,11 +61,11 @@ async function askMiniMax(items) {
     )
     .join("\n");
 
-  const res = await fetch(`${API_BASE}/text/chatcompletion_v2`, {
+  const res = await fetch(`${API_BASE}/chat/completions`, {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${API_KEY}` },
     body: JSON.stringify({
-      model: "MiniMax-M3",
+      model: MODEL,
       messages: [
         { role: "system", content: SYSTEM },
         { role: "user", content: user },
@@ -74,7 +75,7 @@ async function askMiniMax(items) {
       thinking: { type: "disabled" },
     }),
   });
-  if (!res.ok) throw new Error(`MiniMax ${res.status}: ${(await res.text()).slice(0, 200)}`);
+  if (!res.ok) throw new Error(`DeepSeek ${res.status}: ${(await res.text()).slice(0, 200)}`);
   const data = await res.json();
   let content = String(data.choices?.[0]?.message?.content || "").trim();
   const fence = content.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
@@ -97,7 +98,7 @@ for (let i = 0; i < rows.length; i += BATCH) {
   const chunk = rows.slice(i, i + BATCH);
   process.stdout.write(`[names] ${i + 1}-${i + chunk.length} / ${rows.length} … `);
   try {
-    const result = await askMiniMax(chunk);
+    const result = await askDeepSeek(chunk);
     let ok = 0;
     for (const item of result) {
       const target = chunk[item.index];

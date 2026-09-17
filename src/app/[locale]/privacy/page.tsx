@@ -56,7 +56,7 @@ export default async function PrivacyPage({ params }: Props) {
           {
             icon: Lock,
             title: "第三方服务",
-            body: "站点托管在 Cloudflare（会产生标准的服务器访问日志）。餐厅基础信息、评论和照片来自 Google Maps Platform。评论可信度分析和摘要由 MiniMax 的 AI 接口生成——发送给它的只有餐厅名、地址和公开的 Google 评论内容，不包含任何用户个人信息。",
+            body: "站点托管在 Cloudflare（会产生标准的服务器访问日志）。餐厅基础信息、评论和照片来自 Google Maps Platform。评论可信度分析和摘要由 DeepSeek 的 AI 接口生成——发送给它的只有餐厅名、地址和公开的 Google 评论内容，不包含任何用户个人信息。",
           },
           {
             icon: Trash2,
@@ -103,7 +103,7 @@ export default async function PrivacyPage({ params }: Props) {
           {
             icon: Lock,
             title: "第三者サービス",
-            body: "サイトはCloudflare上でホストされています（標準的なアクセスログが生成されます）。店舗情報・レビュー・写真は Google Maps Platform から取得しています。レビューの信頼度分析と要約は MiniMax のAI APIで生成しており、送信するのは店名・住所・公開されているGoogleレビューの本文のみで、利用者の個人情報は含みません。",
+            body: "サイトはCloudflare上でホストされています（標準的なアクセスログが生成されます）。店舗情報・レビュー・写真は Google Maps Platform から取得しています。レビューの信頼度分析と要約は DeepSeek のAI APIで生成しており、送信するのは店名・住所・公開されているGoogleレビューの本文のみで、利用者の個人情報は含みません。",
           },
           {
             icon: Trash2,

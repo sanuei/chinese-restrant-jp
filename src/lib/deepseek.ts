@@ -1,83 +1,139 @@
 /**
- * MiniMax AI API 封装
- * 用于评论可信度分析、菜系分类和摘要生成
+ * DeepSeek AI API 封装（OpenAI 兼容的 /chat/completions）
+ * 用于评论可信度分析、菜系分类和摘要生成。
+ *
+ * 换供应商注意（2026-09 从 MiniMax 切到 DeepSeek 时踩到的坑）：
+ * deepseek-flash / deepseek-v4-pro 默认开思考模式，思考过程记在
+ * message.reasoning_content 里，并且**和正文共享 max_tokens**。
+ * 本站这种「一次判断菜系+品类+正宗度+双语摘要+多条评论可信度」的 prompt
+ * 思考就能吃掉 400+ token，正文直接为空、finish_reason=length，
+ * 表现为「返回了但内容是空的」。所以这里显式传 thinking:{type:"disabled"}，
+ * 并且在正文为空时给出可诊断的报错，而不是让它伪装成 JSON 解析失败。
  */
 
-const API_KEY = process.env.MINIMAX_API_KEY;
-const API_BASE = process.env.MINIMAX_API_BASE || "https://api.minimax.chat/v1";
-const MODEL = "MiniMax-M3"; // 2026-06 发布的最新一代模型（1M 上下文 / Agent 推理）
+const DEFAULT_API_BASE = "https://api.deepseek.com";
+const DEFAULT_MODEL = "deepseek-flash";
 
-interface MiniMaxMessage {
+interface DeepSeekMessage {
   role: "system" | "user" | "assistant";
   content: string;
 }
 
-async function callMiniMax<T = unknown>(messages: MiniMaxMessage[], temperature: number = 0.1): Promise<T> {
-  const response = await fetch(`${API_BASE}/text/chatcompletion_v2`, {
+function getConfig() {
+  return {
+    apiKey: process.env.DEEPSEEK_API_KEY,
+    apiBase: (process.env.DEEPSEEK_API_BASE || DEFAULT_API_BASE).replace(/\/+$/, ""),
+    model: process.env.DEEPSEEK_MODEL || DEFAULT_MODEL,
+  };
+}
+
+type ChatCompletion = {
+  choices?: {
+    message?: { content?: string | null; reasoning_content?: string | null };
+    finish_reason?: string;
+  }[];
+  usage?: {
+    prompt_tokens?: number;
+    completion_tokens?: number;
+    completion_tokens_details?: { reasoning_tokens?: number };
+  };
+};
+
+async function requestCompletion(
+  messages: DeepSeekMessage[],
+  temperature: number,
+  maxTokens: number
+): Promise<ChatCompletion> {
+  const { apiKey, apiBase, model } = getConfig();
+  if (!apiKey) throw new Error("Missing DEEPSEEK_API_KEY");
+
+  const response = await fetch(`${apiBase}/chat/completions`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "Authorization": `Bearer ${API_KEY}`,
+      Authorization: `Bearer ${apiKey}`,
     },
     body: JSON.stringify({
-      model: MODEL,
+      model,
       messages,
       temperature,
       top_p: 0.95,
-      max_tokens: 4096,
-      // M3 默认开启思考模式，思考过程本身也占 max_tokens，遇到复杂 prompt（本站这种一次性
-      // 判断菜系+品类+正宗度+摘要+多条评论可信度的任务）容易把预算耗尽，导致最终 JSON 被截断、
-      // 解析失败。这里的任务是结构化分类/抽取，不需要长链路推理，直接关掉思考模式。
+      max_tokens: maxTokens,
+      // 结构化分类/抽取任务不需要长链路推理，思考模式只会烧掉正文预算
       thinking: { type: "disabled" },
-    })
+    }),
   });
 
   if (!response.ok) {
     const err = await response.text();
-    throw new Error(`MiniMax API error: ${response.status} - ${err}`);
+    throw new Error(`DeepSeek API error: ${response.status} - ${err.slice(0, 500)}`);
   }
 
-  const data = await response.json();
-  if (!data.choices || !data.choices[0]) {
-    throw new Error(`MiniMax API unexpected response: ${JSON.stringify(data)}`);
-  }
-  
-  let content = String(data.choices[0].message.content || "").trim();
-  // 提取 markdown 中的 JSON 块
-  const jsonMatch = content.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
-  if (jsonMatch) {
-    content = jsonMatch[1].trim();
-  } else {
-    content = content.replace(/^```(?:json)?/i, "").replace(/```$/i, "").trim();
-  }
+  return (await response.json()) as ChatCompletion;
+}
 
-  try {
-    return JSON.parse(content) as T;
-  } catch {
-    const objectStart = content.indexOf("{");
-    const objectEnd = content.lastIndexOf("}");
-    const arrayStart = content.indexOf("[");
-    const arrayEnd = content.lastIndexOf("]");
-    const canExtractObject = objectStart >= 0 && objectEnd > objectStart;
-    const canExtractArray = arrayStart >= 0 && arrayEnd > arrayStart;
-    const extracted =
-      canExtractObject && (!canExtractArray || objectStart < arrayStart)
-        ? content.slice(objectStart, objectEnd + 1)
-        : canExtractArray
-          ? content.slice(arrayStart, arrayEnd + 1)
-          : "";
+async function callDeepSeek<T = unknown>(messages: DeepSeekMessage[], temperature: number = 0.1): Promise<T> {
+  // 正文为空时不立刻判定失败：先加大预算重试一次（模型偶尔会无视 thinking:disabled），
+  // 第二次仍为空才报错，报错里带上 reasoning token 数方便定位。
+  const attempts = [4096, 8192];
+  let lastDiagnostic = "";
 
-    if (extracted) {
-      try {
-        return JSON.parse(extracted) as T;
-      } catch {
-        // Fall through to the detailed error below.
-      }
+  for (const maxTokens of attempts) {
+    const data = await requestCompletion(messages, temperature, maxTokens);
+    const choice = data.choices?.[0];
+    if (!choice) {
+      throw new Error(`DeepSeek API unexpected response: ${JSON.stringify(data).slice(0, 500)}`);
     }
 
-    console.error("Failed to parse JSON:", content);
-    throw new Error("MiniMax response was not valid JSON");
+    let content = String(choice.message?.content || "").trim();
+
+    if (!content) {
+      const reasoningTokens = data.usage?.completion_tokens_details?.reasoning_tokens ?? 0;
+      const reasoning = String(choice.message?.reasoning_content || "");
+      lastDiagnostic =
+        `finish_reason=${choice.finish_reason} reasoning_tokens=${reasoningTokens} ` +
+        `reasoning_len=${reasoning.length} completion_tokens=${data.usage?.completion_tokens ?? 0}`;
+      continue;
+    }
+
+    // 提取 markdown 中的 JSON 块
+    const jsonMatch = content.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+    if (jsonMatch) {
+      content = jsonMatch[1].trim();
+    } else {
+      content = content.replace(/^```(?:json)?/i, "").replace(/```$/i, "").trim();
+    }
+
+    try {
+      return JSON.parse(content) as T;
+    } catch {
+      const objectStart = content.indexOf("{");
+      const objectEnd = content.lastIndexOf("}");
+      const arrayStart = content.indexOf("[");
+      const arrayEnd = content.lastIndexOf("]");
+      const canExtractObject = objectStart >= 0 && objectEnd > objectStart;
+      const canExtractArray = arrayStart >= 0 && arrayEnd > arrayStart;
+      const extracted =
+        canExtractObject && (!canExtractArray || objectStart < arrayStart)
+          ? content.slice(objectStart, objectEnd + 1)
+          : canExtractArray
+            ? content.slice(arrayStart, arrayEnd + 1)
+            : "";
+
+      if (extracted) {
+        try {
+          return JSON.parse(extracted) as T;
+        } catch {
+          // 落到下面的详细报错
+        }
+      }
+
+      console.error("Failed to parse JSON:", content);
+      throw new Error(`DeepSeek response was not valid JSON (finish_reason=${choice.finish_reason})`);
+    }
   }
+
+  throw new Error(`DeepSeek 返回空正文（${lastDiagnostic}）`);
 }
 
 // 1. 批量评论可信度分析（一次 API 调用分析所有评论）
@@ -107,7 +163,7 @@ export async function analyzeReviewsCredibilityBatch(
     .map((r, i) => `[${i}] ${r.author_name} (★${r.rating}): ${r.text}`)
     .join('\n');
 
-  return callMiniMax<ReviewCredibilityResult[]>([
+  return callDeepSeek<ReviewCredibilityResult[]>([
     { role: "system", content: systemPrompt },
     { role: "user", content: userContent }
   ]);
@@ -193,7 +249,7 @@ Google评论总数: ${input.reviewCount}
 Google评论（最多5条）:
 ${reviewsText}`;
 
-  return callMiniMax<RestaurantAiAnalysisResult>([
+  return callDeepSeek<RestaurantAiAnalysisResult>([
     { role: "system", content: systemPrompt },
     { role: "user", content: userContent },
   ], 0.2);
@@ -220,7 +276,7 @@ export async function analyzeRestaurantCuisine(
 }`;
 
   const userContent = `餐厅名: ${restaurantName}\n评论摘录:\n${reviewsText.join('\n---\n')}`;
-  return callMiniMax([
+  return callDeepSeek([
     { role: "system", content: systemPrompt },
     { role: "user", content: userContent }
   ]);
@@ -244,7 +300,7 @@ export async function generateBilingualSummary(
 
   const userContent = `餐厅名: ${restaurantName}\n当前评分: ${rating}\n正宗度分类: ${authenticity}\n评论摘录:\n${reviewsText.join('\n---\n')}`;
   
-  return callMiniMax([
+  return callDeepSeek([
     { role: "system", content: systemPrompt },
     { role: "user", content: userContent }
   ], 0.3); // 略微提高温度让语言更自然

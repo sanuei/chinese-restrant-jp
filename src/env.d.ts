@@ -52,8 +52,9 @@ declare global {
     interface ProcessEnv {
       // API Keys
       GOOGLE_MAPS_API_KEY: string;
-      MINIMAX_API_KEY: string;
-      MINIMAX_API_BASE: string;
+      DEEPSEEK_API_KEY: string;
+      DEEPSEEK_API_BASE?: string;
+      DEEPSEEK_MODEL?: string;
       
       // Admin
       ADMIN_SECRET: string; // 用于保护 /api/admin/* 路由

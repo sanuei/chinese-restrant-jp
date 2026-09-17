@@ -4,7 +4,7 @@ import {
   analyzeRestaurantSnapshot,
   type RestaurantAiAnalysisResult,
   type RestaurantAiReviewResult,
-} from "@/lib/minimax";
+} from "@/lib/deepseek";
 
 export type RestaurantReviewData = {
   id: string;
@@ -205,7 +205,7 @@ export async function buildRestaurantSyncSnapshot(
     //
     // 返回 aiAnalysis = null，保存时会走「不带 AI 字段」的那条 upsert，
     // 只更新 Google 原始数据（照片/评分/营业时间），已有分析原样保留。
-    console.error("MiniMax Combined Analysis Error（保留已有分析，不覆盖）:", e);
+    console.error("DeepSeek Combined Analysis Error（保留已有分析，不覆盖）:", e);
     return {
       place,
       aiAnalysis: null,

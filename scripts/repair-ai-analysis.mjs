@@ -21,8 +21,9 @@ dotenv.config({ path: ".env.local", quiet: true });
 const DB = "gachi-chukanavi-db";
 const OUT = "db/migrations/0007_repair_ai_analysis.generated.sql";
 const APPLY = process.env.APPLY === "1";
-const API_KEY = process.env.MINIMAX_API_KEY;
-const API_BASE = process.env.MINIMAX_API_BASE || "https://api.minimax.chat/v1";
+const API_KEY = process.env.DEEPSEEK_API_KEY;
+const API_BASE = process.env.DEEPSEEK_API_BASE || "https://api.deepseek.com";
+const MODEL = process.env.DEEPSEEK_MODEL || "deepseek-flash";
 
 const CUISINES = ["sichuan","cantonese","northern","fujian","hunan","jiangsu","northwest","yunnan","other"];
 const DISHES = ["hotpot","bbq","noodles","malatang","dumpling","riceNoodle","grilledFish","dimsum","other"];
@@ -55,19 +56,19 @@ async function analyze(r, reviews) {
   const reviewText = reviews.length
     ? reviews.map((v, i) => `[${i}] ★${v.rating} ${v.text}`).join("\n---\n")
     : "暂无评论正文。";
-  const res = await fetch(`${API_BASE}/text/chatcompletion_v2`, {
+  const res = await fetch(`${API_BASE}/chat/completions`, {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${API_KEY}` },
     body: JSON.stringify({
-      model: "MiniMax-M3",
+      model: MODEL,
       messages: [
         { role: "system", content: SYSTEM },
         { role: "user", content: `餐厅名: ${r.name_original}\n中文名: ${r.name_zh || "-"}\n地址: ${r.address}\nGoogle评分: ${r.raw_rating}\n评论数: ${r.raw_review_count}\n评论:\n${reviewText}` },
       ],
-      temperature: 0.2, max_tokens: 2048, thinking: { type: "disabled" },
+      temperature: 0.2, max_tokens: 4096, thinking: { type: "disabled" },
     }),
   });
-  if (!res.ok) throw new Error(`MiniMax ${res.status}`);
+  if (!res.ok) throw new Error(`DeepSeek ${res.status}`);
   const data = await res.json();
   let c = String(data.choices?.[0]?.message?.content || "").trim();
   const fence = c.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
