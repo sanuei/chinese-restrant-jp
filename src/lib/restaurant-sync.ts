@@ -281,7 +281,14 @@ export async function saveRestaurantSyncSnapshot(
         price_level = excluded.price_level,
         raw_rating = excluded.raw_rating,
         raw_review_count = excluded.raw_review_count,
-        photos = excluded.photos,
+        -- 照片只在原本为空时才写入。
+        -- R2 的缓存键是 photo_reference + 宽度，一旦 reference 变了，
+        -- 整个图片缓存立刻作废，228 家店的图要重新向 Google 下载一遍
+        -- （实际发生过，一晚上烧掉两千多次 Place Photos 调用）。
+        -- 需要强制刷新照片时走单独的脚本，不要混在常规同步里。
+        photos = CASE
+          WHEN restaurants.photos IS NULL OR restaurants.photos IN ('', '[]')
+          THEN excluded.photos ELSE restaurants.photos END,
         opening_hours = excluded.opening_hours,
         is_active = COALESCE(?, restaurants.is_active),
         last_synced_at = excluded.last_synced_at
@@ -345,7 +352,10 @@ export async function saveRestaurantSyncSnapshot(
       trusted_review_count = excluded.trusted_review_count,
       ai_summary_zh = excluded.ai_summary_zh,
       ai_summary_ja = excluded.ai_summary_ja,
-      photos = excluded.photos,
+      -- 同上：photo_reference 变了就等于让 R2 缓存全部失效，要重新付一次下载费
+      photos = CASE
+        WHEN restaurants.photos IS NULL OR restaurants.photos IN ('', '[]')
+        THEN excluded.photos ELSE restaurants.photos END,
       opening_hours = excluded.opening_hours,
       is_active = COALESCE(?, restaurants.is_active),
       last_synced_at = excluded.last_synced_at
