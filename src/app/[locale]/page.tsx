@@ -3,8 +3,7 @@ import type { Metadata } from "next";
 import HeroSection from "@/components/HeroSection";
 import TopRestaurants from "@/components/TopRestaurants";
 import TrendingRanking from "@/components/TrendingRanking";
-import DishTypeGrid from "@/components/DishTypeGrid";
-import StationGrid from "@/components/StationGrid";
+import HomeDiscovery from "@/components/HomeDiscovery";
 import JsonLd from "@/components/JsonLd";
 import { buildOrganizationJsonLd } from "@/lib/json-ld";
 import { getDb } from "@/lib/cloudflare";
@@ -125,9 +124,11 @@ export default async function HomePage({ params, searchParams }: Props) {
       <JsonLd data={buildOrganizationJsonLd(locale)} />
       <HeroSection locale={locale} counts={cuisineCounts} />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <DishTypeGrid locale={locale} counts={dishTypeCounts} />
-        <div className="divider-chinese" />
-        <StationGrid locale={locale} counts={stationAreaCounts} />
+        <HomeDiscovery
+          locale={locale}
+          dishTypeCounts={dishTypeCounts}
+          stationCounts={stationAreaCounts}
+        />
         <div className="divider-chinese" />
         <TrendingRanking locale={locale} />
         <div className="divider-chinese" />

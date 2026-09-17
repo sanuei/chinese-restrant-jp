@@ -18,6 +18,8 @@
     "section_dish_types": "業態から探す",
     "section_stations": "駅から探す",
     "section_stations_hint": "中国料理店が集まる人気エリアからかんたん検索",
+    "tab_dish_types": "業態から",
+    "tab_stations": "駅から",
     "station_count": "{count}件",
     "section_top": "東京の人気店",
     "section_new": "最新掲載",

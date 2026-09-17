@@ -13,8 +13,8 @@ export default function CuisineGrid({ locale, counts }: Props) {
   const tc = useTranslations("cuisine");
 
   return (
-    <section className="py-12">
-      <h2 className="font-serif font-bold text-2xl sm:text-3xl mb-8"
+    <section className="py-8">
+      <h2 className="font-serif font-bold text-2xl sm:text-3xl mb-5"
           style={{ color: "var(--color-ink-900)" }}>
         {t("section_cuisines")}
       </h2>

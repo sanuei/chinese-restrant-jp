@@ -5,8 +5,8 @@ import { useRouter, usePathname } from "next/navigation";
 import { useState } from "react";
 import { Menu, X, Globe, LogOut, ShieldCheck } from "lucide-react";
 import Link from "next/link";
+import Image from "next/image";
 import { googleSignIn, userSignOut } from "@/lib/auth-actions";
-import { BRAND_ICON as BrandIcon } from "@/lib/cuisine-icons";
 
 type NavUser = { name: string | null; image: string | null; isAdmin: boolean };
 type Props = { locale: string; user: NavUser | null };
@@ -43,7 +43,14 @@ export default function Navbar({ locale, user }: Props) {
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
           <Link href={`/${locale}`} className="flex items-center gap-2 shrink-0">
-            <BrandIcon size={26} style={{ color: "var(--color-vermilion-700)" }} strokeWidth={2} />
+            <Image
+              src="/brand/zhenwei-logo-mark-192.png"
+              alt=""
+              width={38}
+              height={38}
+              className="h-9 w-9 object-contain"
+              priority
+            />
             <div className="hidden sm:block">
               <div className="font-serif font-black text-base leading-tight"
                    style={{ color: "var(--color-vermilion-700)" }}>

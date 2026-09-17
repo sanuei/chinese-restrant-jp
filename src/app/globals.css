@@ -514,7 +514,69 @@ body {
 .divider-chinese {
   height: 1px;
   background: linear-gradient(to right, transparent, var(--color-gold-300), transparent);
-  margin: 32px 0;
+  margin: 18px 0;
+}
+
+/* ================================================
+   首页「找餐厅」合并模块（品类 / 车站 切换）
+   隐藏 radio + :checked 兄弟选择器，纯 CSS 切换，
+   不引入 client component（Workers 上 JS/CPU 是硬约束）。
+   ================================================ */
+
+.discovery-tabs .discovery-tab-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.discovery-tabs .discovery-pane {
+  display: none;
+}
+
+.discovery-tabs #discovery-tab-dish:checked ~ .discovery-head .discovery-pane[data-tab="dish"],
+.discovery-tabs #discovery-tab-station:checked ~ .discovery-head .discovery-pane[data-tab="station"],
+.discovery-tabs #discovery-tab-dish:checked ~ .discovery-panels .discovery-pane[data-panel="dish"],
+.discovery-tabs #discovery-tab-station:checked ~ .discovery-panels .discovery-pane[data-panel="station"] {
+  display: block;
+}
+
+.discovery-switch {
+  display: inline-flex;
+  gap: 3px;
+  padding: 3px;
+  border: 1px solid var(--color-warm-200);
+  border-radius: var(--radius-full);
+  background: var(--color-warm-100);
+}
+
+.discovery-switch-btn {
+  display: inline-flex;
+  align-items: center;
+  padding: 5px 14px;
+  border-radius: var(--radius-full);
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--color-ink-700);
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.discovery-switch-btn:hover {
+  color: var(--color-vermilion-700);
+}
+
+.discovery-tabs #discovery-tab-dish:checked ~ .discovery-head label[for="discovery-tab-dish"],
+.discovery-tabs #discovery-tab-station:checked ~ .discovery-head label[for="discovery-tab-station"] {
+  background: var(--color-vermilion-700);
+  color: #fff;
+}
+
+.discovery-tabs #discovery-tab-dish:focus-visible ~ .discovery-head label[for="discovery-tab-dish"],
+.discovery-tabs #discovery-tab-station:focus-visible ~ .discovery-head label[for="discovery-tab-station"] {
+  outline: 2px solid var(--color-vermilion-500);
+  outline-offset: 2px;
 }
 
 /* ================================================

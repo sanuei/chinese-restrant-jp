@@ -37,7 +37,7 @@ export default async function TrendingRanking({ locale, limit = 12 }: Props) {
   if (restaurants.length === 0) return null;
 
   return (
-    <section className="py-12">
+    <section className="py-8">
       <div className="flex items-end justify-between mb-6 gap-4">
         <div>
           <h2 className="font-serif font-bold text-2xl sm:text-3xl text-ink-900 flex items-center gap-2">

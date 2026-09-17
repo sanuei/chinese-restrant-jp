@@ -79,8 +79,8 @@ export default async function TopRestaurants({
   // 开发环境如果没有数据，提供一个占位提示
   if (restaurants.length === 0) {
     return (
-      <section className="py-12">
-        <h2 className="font-serif font-bold text-2xl sm:text-3xl mb-8 text-ink-900">{title}</h2>
+      <section className="py-8">
+        <h2 className="font-serif font-bold text-2xl sm:text-3xl mb-5 text-ink-900">{title}</h2>
         <div className="text-center py-10 bg-warm-100 rounded-2xl text-ink-400">
           尚未采集餐厅数据，请运行同步脚本获取数据。
         </div>
@@ -89,8 +89,8 @@ export default async function TopRestaurants({
   }
 
   return (
-    <section id={paginated ? "top-restaurants" : undefined} className="py-12 scroll-mt-20">
-      <div className="flex items-center justify-between mb-8">
+    <section id={paginated ? "top-restaurants" : undefined} className="py-8 scroll-mt-20">
+      <div className="flex items-center justify-between mb-5">
         <h2 className="font-serif font-bold text-2xl sm:text-3xl text-ink-900">
           {title}
         </h2>
