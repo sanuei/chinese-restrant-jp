@@ -4,6 +4,7 @@ import HeroSection from "@/components/HeroSection";
 import TopRestaurants from "@/components/TopRestaurants";
 import TrendingRanking from "@/components/TrendingRanking";
 import HomeDiscovery from "@/components/HomeDiscovery";
+import AdSlot from "@/components/AdSlot";
 import JsonLd from "@/components/JsonLd";
 import { buildOrganizationJsonLd } from "@/lib/json-ld";
 import { getDb } from "@/lib/cloudflare";
@@ -131,6 +132,8 @@ export default async function HomePage({ params, searchParams }: Props) {
         />
         <div className="divider-chinese" />
         <TrendingRanking locale={locale} />
+        <div className="divider-chinese" />
+        <AdSlot locale={locale} />
         <div className="divider-chinese" />
         <TopRestaurants
           locale={locale}
