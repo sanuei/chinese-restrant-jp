@@ -7,7 +7,7 @@ import type { RestaurantRow } from "@/lib/restaurant-types";
 const WINDOW_DAYS = 7;
 /** 榜单在 KV 里缓存 5 分钟，避免每次首页渲染都跑一次 GROUP BY */
 const CACHE_TTL_SECONDS = 300;
-const CACHE_KEY_PREFIX = "ranking:trending:v1";
+const CACHE_KEY_PREFIX = "ranking:trending:authentic:v1";
 
 /** 榜单卡片用到的字段，不用 SELECT *，少拉一半列 */
 export type TrendingRestaurant = Pick<
@@ -78,7 +78,7 @@ async function queryTrending(limit: number): Promise<TrendingRestaurant[]> {
       `SELECT ${TRENDING_COLUMNS}, SUM(v.views) AS view_count
        FROM restaurant_views v
        JOIN restaurants r ON r.id = v.restaurant_id
-       WHERE v.view_date >= ? AND r.is_active = 1
+       WHERE v.view_date >= ? AND r.is_active = 1 AND r.authenticity = 'authentic'
        GROUP BY r.id
        ORDER BY view_count DESC, r.trusted_rating DESC
        LIMIT ?`
@@ -96,7 +96,7 @@ async function queryTrending(limit: number): Promise<TrendingRestaurant[]> {
     .prepare(
       `SELECT ${TRENDING_COLUMNS}, 0 AS view_count
        FROM restaurants r
-       WHERE r.is_active = 1 ${placeholders}
+       WHERE r.is_active = 1 AND r.authenticity = 'authentic' ${placeholders}
        ORDER BY r.trusted_rating DESC, r.raw_review_count DESC
        LIMIT ?`
     )

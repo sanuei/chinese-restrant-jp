@@ -42,7 +42,10 @@ export default async function TopRestaurants({ locale, title, limit = 6, sortMod
 
   try {
     const { results = [] } = await db.prepare(
-      `SELECT * FROM restaurants WHERE is_active = 1 ORDER BY ${orderByClause} LIMIT ?`
+      `SELECT * FROM restaurants
+       WHERE is_active = 1 AND authenticity = 'authentic'
+       ORDER BY ${orderByClause}
+       LIMIT ?`
     ).bind(limit).all<RestaurantRow>();
     restaurants = results || [];
   } catch (error) {

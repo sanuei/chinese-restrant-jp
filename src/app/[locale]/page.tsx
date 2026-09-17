@@ -36,7 +36,7 @@ async function getCuisineCounts(): Promise<Record<string, number>> {
       .prepare(
         `SELECT cuisine_type, COUNT(*) as count
          FROM restaurants
-         WHERE is_active = 1
+         WHERE is_active = 1 AND authenticity = 'authentic'
          GROUP BY cuisine_type`
       )
       .all<{ cuisine_type: string; count: number }>();
@@ -58,7 +58,7 @@ async function getDishTypeCounts(): Promise<Record<string, number>> {
       .prepare(
         `SELECT dish_type, COUNT(*) as count
          FROM restaurants
-         WHERE is_active = 1
+         WHERE is_active = 1 AND authenticity = 'authentic'
          GROUP BY dish_type`
       )
       .all<{ dish_type: string; count: number }>();

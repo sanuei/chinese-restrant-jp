@@ -6,12 +6,6 @@ import { CUISINE_ICONS } from "@/lib/cuisine-icons";
 
 type Props = { locale: string; counts: Record<string, number> };
 
-const AUTH_BADGES = [
-  { type: "authentic", tone: "vermilion" },
-  { type: "adapted", tone: "gold" },
-  { type: "japanese", tone: "blue" },
-];
-
 export default async function HeroSection({ locale, counts }: Props) {
   const t = await getTranslations({ locale, namespace: "home" });
   const ta = await getTranslations({ locale, namespace: "auth_badge" });
@@ -83,12 +77,10 @@ export default async function HeroSection({ locale, counts }: Props) {
           </div>
 
           <div className="mt-7 flex flex-wrap items-center gap-3">
-            {AUTH_BADGES.map(({ type, tone }) => (
-              <span key={type} className={`hero-cert-badge hero-cert-${tone}`}>
-                <span className="hero-cert-dot" />
-                {ta(type as "authentic" | "adapted" | "japanese")}
-              </span>
-            ))}
+            <span className="hero-cert-badge hero-cert-vermilion">
+              <span className="hero-cert-dot" />
+              {ta("authentic")}
+            </span>
           </div>
 
           <div className="mt-8 flex flex-col gap-3 text-xs font-medium uppercase tracking-[0.16em] text-warm-100/62 sm:flex-row sm:items-center sm:gap-6">
