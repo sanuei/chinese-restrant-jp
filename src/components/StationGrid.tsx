@@ -21,15 +21,10 @@ export function StationCardGrid({ locale, counts }: Props) {
     <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-8 lg:gap-3">
       {stationAreas.map((station) => {
         const label = locale === "zh" ? station.zh : station.ja;
-        const query = new URLSearchParams({
-          q: station.searchTerm,
-          authenticity: "authentic",
-        });
-
         return (
           <Link
             key={station.key}
-            href={`/${locale}/restaurants?${query.toString()}`}
+            href={`/${locale}/area/${station.key}`}
             className="group flex items-center gap-2 rounded-lg border border-warm-200 bg-white px-2.5 py-2 transition-all hover:-translate-y-0.5 hover:border-vermilion-300 hover:shadow-md"
           >
             <TrainFront size={18} className="shrink-0 text-vermilion-700 transition-transform group-hover:scale-110" />

@@ -1,13 +1,25 @@
 import { redirect } from "next/navigation";
-import { cuisineTypes, type CuisineType } from "@/lib/restaurant-types";
+import LandingPage, { buildLandingMetadata } from "@/components/LandingPage";
+import { landingCuisines, type LandingCuisine } from "@/lib/landing";
+
+export const dynamic = "force-dynamic";
 
 type Props = {
   params: Promise<{ locale: string; cuisine: string }>;
 };
 
-export default async function CuisineRedirectPage({ params }: Props) {
+export async function generateMetadata({ params }: Props) {
   const { locale, cuisine } = await params;
-  const cuisineFilter = cuisineTypes.includes(cuisine as CuisineType) ? cuisine : "other";
+  if (!landingCuisines.includes(cuisine as LandingCuisine)) return {};
+  return buildLandingMetadata({ locale, category: cuisine });
+}
 
-  redirect(`/${locale}/restaurants?cuisine=${cuisineFilter}`);
+export default async function CuisineLandingPage({ params }: Props) {
+  const { locale, cuisine } = await params;
+  // 以前这里对所有菜系都是跳转到筛选页；现在除了「综合/其他」都是独立落地页，
+  // 未知菜系仍和以前一样落到 other 的筛选页
+  if (!landingCuisines.includes(cuisine as LandingCuisine)) {
+    redirect(`/${locale}/restaurants?cuisine=other`);
+  }
+  return <LandingPage locale={locale} category={cuisine} />;
 }

@@ -9,6 +9,7 @@ import JsonLd from "@/components/JsonLd";
 import { buildOrganizationJsonLd } from "@/lib/json-ld";
 import { getDb } from "@/lib/cloudflare";
 import { stationAreas, type StationAreaKey } from "@/lib/station-areas";
+import { countMatching, getLightRows } from "@/lib/landing-data";
 
 export const dynamic = "force-dynamic";
 
@@ -83,30 +84,12 @@ async function getDishTypeCounts(): Promise<Record<string, number>> {
   }
 }
 
+/** 和车站落地页同一套规则（含非正宗店、1.5km 以内），卡片上的家数和点进去看到的一致 */
 async function getStationAreaCounts(): Promise<Record<StationAreaKey, number>> {
-  const counts = Object.fromEntries(stationAreas.map(({ key }) => [key, 0])) as Record<StationAreaKey, number>;
-
-  try {
-    const db = await getDb();
-    const result = await db
-      .prepare(
-        `SELECT nearest_station, COUNT(*) AS count
-         FROM restaurants
-         WHERE is_active = 1 AND authenticity = 'authentic' AND nearest_station IS NOT NULL
-         GROUP BY nearest_station`
-      )
-      .all<{ nearest_station: string; count: number }>();
-
-    for (const row of result.results ?? []) {
-      for (const station of stationAreas) {
-        if (row.nearest_station.includes(station.searchTerm)) counts[station.key] += row.count;
-      }
-    }
-  } catch {
-    // 首页其他模块仍可正常渲染。
-  }
-
-  return counts;
+  const rows = await getLightRows();
+  return Object.fromEntries(
+    stationAreas.map(({ key }) => [key, countMatching(rows, { area: key })])
+  ) as Record<StationAreaKey, number>;
 }
 
 export default async function HomePage({ params, searchParams }: Props) {

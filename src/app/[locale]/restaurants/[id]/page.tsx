@@ -5,6 +5,7 @@ import { recordRestaurantView } from "@/lib/views";
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import { notFound } from "next/navigation";
+import Link from "next/link";
 import { Star, MapPin, Phone, Globe, ShieldCheck, ShieldAlert, MapPinned, TrainFront } from "lucide-react";
 import RatingExplainer from "@/components/RatingExplainer";
 import FavoriteButton from "@/components/FavoriteButton";
@@ -12,6 +13,8 @@ import ShareButton from "@/components/ShareButton";
 import JsonLd from "@/components/JsonLd";
 import OpeningHours from "@/components/OpeningHours";
 import { buildBreadcrumbJsonLd, buildRestaurantJsonLd } from "@/lib/json-ld";
+import { stationAreas } from "@/lib/station-areas";
+import { landingPath, matchesArea } from "@/lib/landing";
 import {
   getRating,
   getRestaurantName,
@@ -120,9 +123,16 @@ export default async function RestaurantDetailPage({ params }: Props) {
   const isLoggedIn = Boolean(await getCurrentUser());
   const favoritedIds = await getFavoritedIds([restaurant.id]);
 
+  // 属于某个车站落地页的店，面包屑和「周边更多」都指过去，给落地页导内链
+  const area = stationAreas.find((a) => matchesArea(restaurant, a.key)) ?? null;
+  const areaHref = area ? `/${locale}${landingPath({ area: area.key })}` : null;
+  const areaName = area ? (locale === "zh" ? `${area.zh}中餐` : `${area.ja}の中華`) : null;
+
   const breadcrumbJsonLd = buildBreadcrumbJsonLd([
     { name: locale === "zh" ? "首页" : "ホーム", url: `/${locale}` },
-    { name: locale === "zh" ? "餐厅" : "レストラン", url: `/${locale}/restaurants` },
+    area && areaHref && areaName
+      ? { name: areaName, url: areaHref }
+      : { name: locale === "zh" ? "餐厅" : "レストラン", url: `/${locale}/restaurants` },
     { name, url: `/${locale}/restaurants/${restaurant.id}` },
   ]);
   const restaurantJsonLd = buildRestaurantJsonLd(restaurant, locale);
@@ -278,6 +288,11 @@ export default async function RestaurantDetailPage({ params }: Props) {
               <div className="mb-4 flex items-start gap-2 rounded-lg bg-warm-50 px-3 py-2 text-sm text-ink-700">
                 <TrainFront size={16} className="mt-0.5 shrink-0 text-vermilion-700" />
                 <span className="font-semibold">{stationLabel}</span>
+                {areaHref && area && (
+                  <Link href={areaHref} className="ml-auto shrink-0 text-xs font-semibold text-vermilion-700 hover:underline">
+                    {locale === "zh" ? `${area.zh}周边更多 →` : `${area.ja}周辺の店 →`}
+                  </Link>
+                )}
               </div>
             )}
             <a

@@ -23,7 +23,7 @@ export function DishTypeCardGrid({ locale, counts }: Props) {
         return (
           <Link
             key={key}
-            href={`/${locale}/restaurants?dish_type=${key}`}
+            href={key === "other" ? `/${locale}/restaurants?dish_type=other` : `/${locale}/dishes/${key}`}
             className="dish-type-tag group flex flex-col items-center gap-1 rounded-lg border px-1.5 py-2.5 text-center transition-all hover:shadow-md hover:-translate-y-0.5 cursor-pointer"
           >
             <Icon size={22} />

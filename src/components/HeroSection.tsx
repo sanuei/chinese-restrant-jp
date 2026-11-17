@@ -64,7 +64,7 @@ export default async function HeroSection({ locale, counts }: Props) {
               {cuisineTypes.map((key) => {
                 const Icon = CUISINE_ICONS[key];
                 return (
-                  <Link key={key} href={`/${locale}/restaurants?cuisine=${key}`} className="hero-cuisine-chip">
+                  <Link key={key} href={`/${locale}/cuisines/${key}`} className="hero-cuisine-chip">
                     <Icon size={24} />
                     <span className="hero-cuisine-chip-label">{tc(key)}</span>
                     <span className="hero-cuisine-chip-count">

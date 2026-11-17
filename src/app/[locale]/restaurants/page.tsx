@@ -4,20 +4,12 @@ import { getFavoritedIds } from "@/lib/favorites";
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import Link from "next/link";
-import { Filter, Map, MapPin, Search, Star } from "lucide-react";
-import FavoriteButton from "@/components/FavoriteButton";
+import { Filter, Map, Search } from "lucide-react";
+import RestaurantCard from "@/components/RestaurantCard";
 import {
   authenticityTypes,
   cuisineTypes,
   dishTypes,
-  getRating,
-  getRestaurantName,
-  getRestaurantSummary,
-  normalizeAuthenticity,
-  normalizeCuisineType,
-  normalizePriceLevel,
-  parsePhotoReferences,
-  photoSrc,
   type Authenticity,
   type CuisineType,
   type DishType,
@@ -97,7 +89,6 @@ export default async function RestaurantsPage({
   searchParams: Promise<SearchParams>;
 }) {
   const { locale } = await params;
-  const t = await getTranslations({ locale, namespace: "restaurant" });
   const ta = await getTranslations({ locale, namespace: "auth_badge" });
   const tc = await getTranslations({ locale, namespace: "cuisine" });
   const td = await getTranslations({ locale, namespace: "dish_type" });
@@ -305,75 +296,15 @@ export default async function RestaurantsPage({
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {restaurants.map((restaurant) => {
-            const name = getRestaurantName(restaurant, locale);
-            const summary = getRestaurantSummary(restaurant, locale);
-            const authenticity = normalizeAuthenticity(restaurant.authenticity);
-            const cuisineType = normalizeCuisineType(restaurant.cuisine_type);
-            const priceLevel = normalizePriceLevel(restaurant.price_level);
-            
-            let photoUrl = "https://images.unsplash.com/photo-1563245372-f21724e3856d?q=80&w=600&auto=format&fit=crop"; // fallback
-            const photos = parsePhotoReferences(restaurant.photos);
-            if (photos.length > 0) {
-              // 经由 /api/photo 代理（R2 缓存），不再每次展示都直连 Google 计费
-              photoUrl = photoSrc(photos[0], 800);
-            }
-
-            return (
-              <Link key={restaurant.id} href={`/${locale}/restaurants/${restaurant.id}`} className="restaurant-card group block">
-                <div className="relative h-48 overflow-hidden bg-warm-100">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img 
-                    src={photoUrl} 
-                    alt={name}
-                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                  />
-                  <div className="absolute top-3 right-3 flex gap-2">
-                    <span className={`badge-${authenticity}`}>
-                      {ta(authenticity)}
-                    </span>
-                  </div>
-                  <div className="absolute top-3 left-3">
-                    <FavoriteButton
-                      restaurantId={restaurant.id}
-                      initialFavorited={favoritedIds.has(restaurant.id)}
-                      isLoggedIn={isLoggedIn}
-                      locale={locale}
-                    />
-                  </div>
-                </div>
-                
-                <div className="p-5">
-                  <div className="flex justify-between items-start mb-2">
-                    <h3 className="font-bold text-lg leading-tight" style={{ color: "var(--color-ink-900)" }}>
-                      {name}
-                    </h3>
-                    <div className="flex items-center gap-1 bg-warm-50 px-2 py-1 rounded-md" style={{ color: "var(--color-ink-900)" }}>
-                      <Star size={14} className="fill-gold-500 text-gold-500" style={{ color: "var(--color-gold-500)", fill: "var(--color-gold-500)" }} />
-                      <span className="font-bold text-sm">{getRating(restaurant).toFixed(1)}</span>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-3 text-xs mb-4" style={{ color: "var(--color-ink-400)" }}>
-                    <span className="flex items-center gap-1"><MapPin size={12} /> {restaurant.ward || restaurant.city}</span>
-                    <span className={`cuisine-tag cuisine-${cuisineType}`}>{tc(cuisineType)}</span>
-                    {priceLevel && <span>{t(`price_level.${priceLevel}`)}</span>}
-                  </div>
-
-                  {summary && (
-                    <div className="ai-summary-card text-sm leading-snug" style={{ color: "var(--color-ink-700)" }}>
-                      {summary}
-                    </div>
-                  )}
-                  
-                  <div className="mt-4 text-xs flex justify-between items-center" style={{ color: "var(--color-ink-400)" }}>
-                    <span>{restaurant.trusted_review_count || 0} {t("trusted_reviews")}</span>
-                    <span>Google: {(restaurant.raw_rating || 0).toFixed(1)}</span>
-                  </div>
-                </div>
-              </Link>
-            );
-          })}
+          {restaurants.map((restaurant) => (
+            <RestaurantCard
+              key={restaurant.id}
+              restaurant={restaurant}
+              locale={locale}
+              isLoggedIn={isLoggedIn}
+              isFavorited={favoritedIds.has(restaurant.id)}
+            />
+          ))}
         </div>
       )}
     </div>
