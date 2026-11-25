@@ -102,6 +102,57 @@ export async function PUT(req: NextRequest, { params }: RouteParams) {
   }
 }
 
+// PATCH /api/admin/restaurants/[id] — 安全的局部字段更新（不覆盖未传入字段）
+export async function PATCH(req: NextRequest, { params }: RouteParams) {
+  if (!(await isAdminRequest(req))) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  try {
+    const { id } = await params;
+    const body = (await req.json()) as Record<string, unknown>;
+    const db = await getDb();
+
+    const existing = await db.prepare("SELECT id FROM restaurants WHERE id = ?").bind(id).first();
+    if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+    const allowedFields = [
+      "nearest_station",
+      "nearest_station_zh",
+      "station_distance_m",
+      "name_zh",
+      "is_active",
+    ] as const;
+
+    const sets: string[] = [];
+    const binds: (string | number | null)[] = [];
+
+    for (const field of allowedFields) {
+      if (!(field in body)) continue;
+      const val = body[field];
+      if (field === "station_distance_m" || field === "is_active") {
+        sets.push(`${field} = ?`);
+        binds.push(val === null || val === undefined ? null : Number(val));
+      } else {
+        sets.push(`${field} = ?`);
+        binds.push(val === null || val === undefined ? null : String(val));
+      }
+    }
+
+    if (sets.length === 0) {
+      return NextResponse.json({ error: "No supported fields to update" }, { status: 400 });
+    }
+
+    sets.push("updated_at = datetime('now')");
+    await db
+      .prepare(`UPDATE restaurants SET ${sets.join(", ")} WHERE id = ?`)
+      .bind(...binds, id)
+      .run();
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error("PATCH /api/admin/restaurants/[id] error:", error);
+    return NextResponse.json({ error: "Internal error" }, { status: 500 });
+  }
+}
+
 // DELETE /api/admin/restaurants/[id] — 软删除（is_active = 0）
 export async function DELETE(req: NextRequest, { params }: RouteParams) {
   if (!(await isAdminRequest(req))) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

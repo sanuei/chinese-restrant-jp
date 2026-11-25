@@ -53,6 +53,7 @@ export async function GET(req: NextRequest) {
       raw_rating: "raw_rating DESC",
       raw_review_count: "raw_review_count DESC",
       newest: "last_synced_at DESC",
+      oldest: "last_synced_at ASC",
       name_zh: "name_zh ASC",
       authenticity_score: "authenticity_score DESC",
     };

@@ -1,0 +1,76 @@
+name: 自动发现并添加新餐厅
+
+on:
+  # 每周一日本时间 04:00（UTC 周日 19:00）自动按区域组轮换搜索并添加新店
+  schedule:
+    - cron: "0 19 * * 0"
+
+  # 支持在 GitHub Actions 页面随时手动触发，可自定义搜索范围和数量
+  workflow_dispatch:
+    inputs:
+      max_new:
+        description: "本次最多新增餐厅数（建议 10-20）"
+        required: false
+        default: "15"
+        type: string
+      rotation_index:
+        description: "指定轮换组编号（0-5，留空则按当前周数自动轮换）"
+        required: false
+        default: ""
+        type: string
+      areas:
+        description: "自定义区域（逗号分隔，留空使用轮换组，如：西川口,錦糸町,蒲田）"
+        required: false
+        default: ""
+        type: string
+      keywords:
+        description: "自定义关键词（逗号分隔，留空使用轮换组，如：広東料理,福建料理,ガチ中華）"
+        required: false
+        default: ""
+        type: string
+      min_rating:
+        description: "最低 Google 评分"
+        required: false
+        default: "4.0"
+        type: string
+      min_reviews:
+        description: "最低 Google 评论数"
+        required: false
+        default: "50"
+        type: string
+      dry_run:
+        description: "仅试跑预览，不写入数据库"
+        required: false
+        default: false
+        type: boolean
+
+concurrency:
+  group: auto-discover-restaurants
+  cancel-in-progress: false
+
+jobs:
+  discover:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Run auto-discover
+        env:
+          ADMIN_SECRET: ${{ secrets.ADMIN_SECRET }}
+          SYNC_API_BASE: ${{ vars.SYNC_API_BASE || 'https://gachi.soniclab.cc' }}
+          MAX_NEW: ${{ inputs.max_new || '15' }}
+          ROTATION_INDEX: ${{ inputs.rotation_index || '' }}
+          AREAS: ${{ inputs.areas || '' }}
+          KEYWORDS: ${{ inputs.keywords || '' }}
+          MIN_RATING: ${{ inputs.min_rating || '4.0' }}
+          MIN_REVIEWS: ${{ inputs.min_reviews || '50' }}
+          DRY_RUN: ${{ inputs.dry_run && '1' || '0' }}
+        run: node scripts/auto-discover.mjs

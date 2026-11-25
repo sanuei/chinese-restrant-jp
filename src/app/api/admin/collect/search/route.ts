@@ -9,6 +9,8 @@ type SearchBody = {
   minRating?: number;
   minReviews?: number;
   requireTokyo?: boolean;
+  // true 时（默认）限制在关东 7 都县内，避免非东京搜索跑偏到关西或海外
+  requireKanto?: boolean;
   limit?: number;
 };
 
@@ -18,6 +20,7 @@ type GoogleTextSearchResult = {
   formatted_address?: string;
   rating?: number;
   user_ratings_total?: number;
+  business_status?: string;
 };
 
 type Candidate = {
@@ -39,8 +42,22 @@ const DEFAULT_AREAS = [
 const DEFAULT_KEYWORDS = [
   "湖南料理", "湘菜", "四川料理", "川菜", "重慶火鍋", "麻辣湯", "中国火鍋",
   "中国東北料理", "東北菜", "延辺料理", "新疆料理", "蘭州牛肉麺", "雲南料理",
+  "広東料理", "茶餐廳", "飲茶", "福建料理", "上海料理", "烤魚", "東北鉄鍋燉", "螺螄粉",
   "本格中華", "ガチ中華",
 ];
+
+const KANTO_PATTERNS = ["東京都", "神奈川県", "埼玉県", "千葉県", "茨城県", "栃木県", "群馬県"];
+
+// 非东京都内的关东热门区域名，拼接查询词时不强行加「東京」
+const NON_TOKYO_AREA_HINTS = [
+  "神奈川", "横浜", "川崎", "埼玉", "川口", "西川口", "蕨", "大宮", "浦和",
+  "千葉", "船橋", "西船橋", "松戸", "柏", "市川", "津田沼",
+];
+
+function buildSearchQuery(keyword: string, area: string): string {
+  const isNonTokyo = NON_TOKYO_AREA_HINTS.some((hint) => area.includes(hint));
+  return isNonTokyo ? `${keyword} ${area}` : `${keyword} ${area} 東京`;
+}
 
 function normalizeList(value: unknown, fallback: string[]): string[] {
   if (!Array.isArray(value)) return fallback;
@@ -84,13 +101,21 @@ async function markExistingCandidates(candidates: Candidate[]): Promise<Candidat
 
   try {
     const db = await getDb();
-    const placeholders = candidates.map(() => "?").join(",");
-    const ids = candidates.map((candidate) => candidate.placeId);
-    const { results } = await db
-      .prepare(`SELECT id FROM restaurants WHERE id IN (${placeholders}) AND is_active = 1`)
-      .bind(...ids)
-      .all<{ id: string }>();
-    const existingIds = new Set((results || []).map((row) => row.id));
+    // D1 单条查询有参数上限，按 80 个一组分批去重；查全表（含已下架的店），避免反复采回被过滤/删除的店
+    const existingIds = new Set<string>();
+    const chunkSize = 80;
+    for (let i = 0; i < candidates.length; i += chunkSize) {
+      const chunk = candidates.slice(i, i + chunkSize);
+      const placeholders = chunk.map(() => "?").join(",");
+      const ids = chunk.map((candidate) => candidate.placeId);
+      const { results } = await db
+        .prepare(`SELECT id FROM restaurants WHERE id IN (${placeholders})`)
+        .bind(...ids)
+        .all<{ id: string }>();
+      for (const row of results || []) {
+        existingIds.add(row.id);
+      }
+    }
     return candidates.map((candidate) => ({
       ...candidate,
       existing: existingIds.has(candidate.placeId),
@@ -114,6 +139,7 @@ export async function POST(req: NextRequest) {
     const minReviews = clampNumber(body.minReviews, 50, 0, 100000);
     const limit = Math.round(clampNumber(body.limit, 80, 1, 300));
     const requireTokyo = body.requireTokyo !== false;
+    const requireKanto = body.requireKanto !== false;
 
     const candidates = new Map<string, Candidate>();
     const errors: string[] = [];
@@ -121,19 +147,21 @@ export async function POST(req: NextRequest) {
 
     for (const area of areas) {
       for (const keyword of keywords) {
-        const query = `${keyword} ${area} 東京`;
+        const query = buildSearchQuery(keyword, area);
         try {
           const results = await searchGoogle(query);
           rawCount += results.length;
 
           for (const result of results) {
             if (!result.place_id || !result.name) continue;
+            if (result.business_status === "CLOSED_PERMANENTLY") continue;
             const rating = result.rating || 0;
             const reviewCount = result.user_ratings_total || 0;
             const address = result.formatted_address || "";
             if (rating < minRating) continue;
             if (reviewCount < minReviews) continue;
             if (requireTokyo && !address.includes("東京都")) continue;
+            if (!requireTokyo && requireKanto && !KANTO_PATTERNS.some((p) => address.includes(p))) continue;
 
             const source = `${area}/${keyword}`;
             const existing = candidates.get(result.place_id);

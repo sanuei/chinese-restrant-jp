@@ -289,7 +289,7 @@ async function fetchExistingRestaurants() {
     const url = new URL(`${SYNC_API_BASE}/api/admin/restaurants`);
     url.searchParams.set("page", String(page));
     url.searchParams.set("pageSize", String(pageSize));
-    url.searchParams.set("sort", "newest");
+    url.searchParams.set("sort", "oldest");
 
     const res = await fetch(url, {
       headers: { Authorization: `Bearer ${ADMIN_SECRET}` },

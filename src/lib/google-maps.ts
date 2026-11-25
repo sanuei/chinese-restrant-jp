@@ -27,6 +27,7 @@ export interface GooglePlaceResult {
   rating?: number;
   user_ratings_total?: number;
   price_level?: number;
+  business_status?: string;
   formatted_phone_number?: string;
   website?: string;
   url?: string;
@@ -106,8 +107,8 @@ export async function getPlaceDetails(placeId: string): Promise<GooglePlaceResul
 
   const url = new URL("https://maps.googleapis.com/maps/api/place/details/json");
   url.searchParams.append("place_id", placeId);
-  // 需要的字段：名称,地址,评分,评论数,价格,电话,官网,Google地图链接,评论,照片,经纬度
-  url.searchParams.append("fields", "place_id,name,formatted_address,geometry,rating,user_ratings_total,price_level,formatted_phone_number,website,url,reviews,photos,opening_hours");
+  // 需要的字段：名称,地址,营业状态,评分,评论数,价格,电话,官网,Google地图链接,评论,照片,经纬度
+  url.searchParams.append("fields", "place_id,name,formatted_address,business_status,geometry,rating,user_ratings_total,price_level,formatted_phone_number,website,url,reviews,photos,opening_hours");
   url.searchParams.append("key", API_KEY as string);
   url.searchParams.append("language", "ja"); 
   url.searchParams.append("reviews_sort", "newest"); // 获取最新评论

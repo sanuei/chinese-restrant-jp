@@ -38,6 +38,16 @@ export type RestaurantSyncSnapshot = {
 
 type SaveRestaurantOptions = {
   isActive?: number | null;
+  // true 时：仅正宗/改良中餐且未永久歇业的新店自动上架，日式中华/未知/永久歇业自动隐藏待审
+  autoFilterNonChinese?: boolean;
+  // 调用方原本请求的 place_id；当 Google 将其重定向到合并后的新 place_id 时用于下架旧记录
+  requestedPlaceId?: string;
+};
+
+export type SaveRestaurantResult = {
+  insertActive: number;
+  permanentlyClosed: boolean;
+  redirectedFromPlaceId: string | null;
 };
 
 type BuildSnapshotOptions = {
@@ -112,7 +122,10 @@ function normalizeAiAnalysis(value: RestaurantAiAnalysisResult | null | undefine
   const authenticity = value?.authenticity || "unknown";
   const reviews = Array.isArray(value?.reviews) ? value.reviews : [];
 
+  const nameZh = typeof value?.name_zh === "string" ? value.name_zh.trim() : "";
+
   return {
+    name_zh: nameZh,
     cuisine_type: CUISINE_TYPES.has(cuisine) ? cuisine : "other",
     cuisine_confidence: clampScore(value?.cuisine_confidence, 0),
     dish_type: DISH_TYPES.has(dishType) ? dishType : "other",
@@ -253,13 +266,55 @@ export async function buildRestaurantSyncSnapshot(
   };
 }
 
+function resolveActiveState(
+  snapshot: RestaurantSyncSnapshot,
+  options: SaveRestaurantOptions
+): { insertActive: number; updateActive: number | null; permanentlyClosed: boolean } {
+  const permanentlyClosed = snapshot.place.business_status === "CLOSED_PERMANENTLY";
+  if (permanentlyClosed) {
+    // 永久歇业无论新旧店一律下架，但保留记录避免后续重复采集
+    return { insertActive: 0, updateActive: 0, permanentlyClosed: true };
+  }
+
+  if (options.isActive === 0 || options.isActive === 1) {
+    return { insertActive: options.isActive, updateActive: options.isActive, permanentlyClosed: false };
+  }
+
+  if (options.autoFilterNonChinese && snapshot.aiAnalysis !== null) {
+    const auth = snapshot.aiAnalysis.authenticity;
+    const shouldPublish = auth === "authentic" || auth === "adapted";
+    // 新店按 AI 判定的正宗度决定是否自动上架；已有老店保持原状态不被误改
+    return { insertActive: shouldPublish ? 1 : 0, updateActive: null, permanentlyClosed: false };
+  }
+
+  return { insertActive: 1, updateActive: null, permanentlyClosed: false };
+}
+
+async function deactivateRedirectedPlaceId(
+  db: Awaited<ReturnType<typeof getDb>>,
+  requestedPlaceId: string | undefined,
+  canonicalPlaceId: string
+): Promise<string | null> {
+  if (!requestedPlaceId || requestedPlaceId === canonicalPlaceId) return null;
+  // Google 合并/更换 place_id 后，旧 ID 必须下架并刷新同步时间，防止重复展示和轮询死循环
+  await db
+    .prepare(
+      `UPDATE restaurants
+       SET is_active = 0, last_synced_at = datetime('now'), updated_at = datetime('now')
+       WHERE id = ?`
+    )
+    .bind(requestedPlaceId)
+    .run();
+  return requestedPlaceId;
+}
+
 export async function saveRestaurantSyncSnapshot(
   snapshot: RestaurantSyncSnapshot,
   options: SaveRestaurantOptions = {}
-) {
+): Promise<SaveRestaurantResult> {
   const db = await getDb();
   const { place, aiAnalysis } = snapshot;
-  const isActive = options.isActive ?? null;
+  const { insertActive, updateActive, permanentlyClosed } = resolveActiveState(snapshot, options);
 
   if (aiAnalysis === null) {
     // 仅刷新模式：只更新 Google 原始数据字段，完全不碰菜系/正宗度/AI摘要/评论表
@@ -267,7 +322,7 @@ export async function saveRestaurantSyncSnapshot(
       INSERT INTO restaurants (
         id, name_original, address, city, ward, lat, lng, phone, website, google_maps_url, price_level,
         raw_rating, raw_review_count, photos, opening_hours, is_active, last_synced_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, COALESCE(?, 1), datetime('now'))
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
       ON CONFLICT(id) DO UPDATE SET
         name_original = excluded.name_original,
         address = excluded.address,
@@ -314,21 +369,27 @@ export async function saveRestaurantSyncSnapshot(
             weekday_text: place.opening_hours.weekday_text || [],
           })
         : null,
-      isActive,
-      isActive
+      insertActive,
+      updateActive
     ).run();
-    return;
+
+    const redirectedFromPlaceId = await deactivateRedirectedPlaceId(db, options.requestedPlaceId, place.place_id);
+    return { insertActive, permanentlyClosed, redirectedFromPlaceId };
   }
 
   await db.prepare(`
     INSERT INTO restaurants (
-      id, name_original, address, city, ward, lat, lng, phone, website, google_maps_url, price_level,
+      id, name_zh, name_original, address, city, ward, lat, lng, phone, website, google_maps_url, price_level,
       cuisine_type, cuisine_confidence, dish_type, authenticity, authenticity_score,
       authenticity_reason_zh, authenticity_reason_ja,
       raw_rating, trusted_rating, raw_review_count, trusted_review_count,
       ai_summary_zh, ai_summary_ja, photos, opening_hours, is_active, last_synced_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, COALESCE(?, 1), datetime('now'))
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
     ON CONFLICT(id) DO UPDATE SET
+      -- 仅当库里原本没有中文店名时才自动填充，不覆盖人工或脚本维护好的中文名
+      name_zh = CASE
+        WHEN restaurants.name_zh IS NULL OR restaurants.name_zh = ''
+        THEN excluded.name_zh ELSE restaurants.name_zh END,
       name_original = excluded.name_original,
       address = excluded.address,
       city = excluded.city,
@@ -361,6 +422,7 @@ export async function saveRestaurantSyncSnapshot(
       last_synced_at = excluded.last_synced_at
   `).bind(
     place.place_id,
+    aiAnalysis.name_zh || "",
     place.name,
     place.formatted_address,
     snapshot.region?.key || "tokyo",
@@ -385,15 +447,15 @@ export async function saveRestaurantSyncSnapshot(
     aiAnalysis.ai_summary_zh,
     aiAnalysis.ai_summary_ja,
     JSON.stringify(place.photos?.map((photo) => photo.photo_reference) || []),
-      // 只留 periods/weekday_text，open_now 是拉取那一刻的快照，存下来会过期误导
-      place.opening_hours
-        ? JSON.stringify({
-            periods: place.opening_hours.periods || [],
-            weekday_text: place.opening_hours.weekday_text || [],
-          })
-        : null,
-    isActive,
-    isActive
+    // 只留 periods/weekday_text，open_now 是拉取那一刻的快照，存下来会过期误导
+    place.opening_hours
+      ? JSON.stringify({
+          periods: place.opening_hours.periods || [],
+          weekday_text: place.opening_hours.weekday_text || [],
+        })
+      : null,
+    insertActive,
+    updateActive
   ).run();
 
   await db.prepare(`DELETE FROM reviews WHERE restaurant_id = ? AND source = 'google'`).bind(place.place_id).run();
@@ -422,6 +484,9 @@ export async function saveRestaurantSyncSnapshot(
       )
     ));
   }
+
+  const redirectedFromPlaceId = await deactivateRedirectedPlaceId(db, options.requestedPlaceId, place.place_id);
+  return { insertActive, permanentlyClosed, redirectedFromPlaceId };
 }
 
 export async function syncRestaurantByPlaceId(
@@ -429,6 +494,9 @@ export async function syncRestaurantByPlaceId(
   options: SaveRestaurantOptions & BuildSnapshotOptions = {}
 ) {
   const snapshot = await buildRestaurantSyncSnapshot(placeId, { skipAiAnalysis: options.skipAiAnalysis });
-  await saveRestaurantSyncSnapshot(snapshot, options);
-  return snapshot;
+  const saveResult = await saveRestaurantSyncSnapshot(snapshot, {
+    ...options,
+    requestedPlaceId: options.requestedPlaceId ?? placeId,
+  });
+  return { ...snapshot, saveResult };
 }

@@ -182,6 +182,7 @@ export interface RestaurantAiReviewResult extends ReviewCredibilityResult {
 }
 
 export interface RestaurantAiAnalysisResult {
+  name_zh?: string;
   cuisine_type: "sichuan" | "cantonese" | "northern" | "fujian" | "hunan" | "jiangsu" | "northwest" | "yunnan" | "other";
   cuisine_confidence: number;
   dish_type: "hotpot" | "bbq" | "noodles" | "malatang" | "dumpling" | "riceNoodle" | "grilledFish" | "dimsum" | "other";
@@ -205,11 +206,17 @@ export async function analyzeRestaurantSnapshot(input: {
   const systemPrompt = `你是“ガチ中華ナビ”的餐厅数据分析专家，熟悉中国各地菜系、日本中華、在日华人餐饮语境和虚假评论识别。
 
 请把同一家餐厅的所有 AI 任务合并完成：
-1. 判断菜系（地域风味）。
-2. 判断品类（经营业态）。
-3. 判断正宗度。
-4. 生成中文和日文短摘要。
-5. 判断每条 Google 评论的可信度。
+1. 生成中文店名（name_zh）。
+2. 判断菜系（地域风味）。
+3. 判断品类（经营业态）。
+4. 判断正宗度。
+5. 生成中文和日文短摘要。
+6. 判断每条 Google 评论的可信度。
+
+中文店名 name_zh 规则：
+- 原名里的日文汉字直接转成对应简体中文汉字（如「広東料理 海港美食」→「广东料理 海港美食」，「麺館」→「面馆」）。
+- 片假名或英文品牌名保留原样不硬译，分店名保留并转简体（如「新宿東口店」→「新宿东口店」）。
+- 不要编造原名里没有的词；如果原名本身已是标准中文，原样返回。
 
 菜系 cuisine_type 只能是以下之一：
 sichuan(川菜), cantonese(粤菜), northern(北方菜), fujian(闽菜), hunan(湘菜), jiangsu(苏浙菜), northwest(西北菜), yunnan(云贵菜), other(综合/其他)。
@@ -226,6 +233,7 @@ authentic(正宗中国味), adapted(改良中国味), japanese(日式中华), un
 
 返回严格 JSON，不要 markdown，不要解释。格式：
 {
+  "name_zh": "中文店名",
   "cuisine_type": "...",
   "cuisine_confidence": 0-100,
   "dish_type": "...",
