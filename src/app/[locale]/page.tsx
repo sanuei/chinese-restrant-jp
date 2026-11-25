@@ -123,7 +123,7 @@ async function getStationAreaCounts(): Promise<Record<StationAreaKey, number>> {
 async function getHeroShowcaseRestaurants(): Promise<HeroShowcaseRestaurant[]> {
   try {
     const db = await getDb();
-    // 精选有实拍照片的高分正宗餐厅，按小时轮换并按菜系打散取 7 家展示在 3D 弧形画廊中
+    // 精选有实拍照片的高分正宗餐厅，按小时轮换并按菜系打散取 16 家用于 3D 可滑动弧形画廊
     const result = await db
       .prepare(
         `SELECT id, name_zh, name_ja, name_original, cuisine_type, trusted_rating, raw_rating, photos
@@ -139,7 +139,7 @@ async function getHeroShowcaseRestaurants(): Promise<HeroShowcaseRestaurant[]> {
     return rotateRestaurantsByTier(pool, getHourlyRotationSeed() + 777, {
       tierSize: 36,
       diversifyCuisine: true,
-    }).slice(0, 7);
+    }).slice(0, 16);
   } catch {
     return [];
   }

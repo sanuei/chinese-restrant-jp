@@ -1,6 +1,6 @@
 import { getTranslations } from "next-intl/server";
 import Link from "next/link";
-import { ArrowRight, Star } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import {
   cuisineTypes,
   getRating,
@@ -11,6 +11,7 @@ import {
   type RestaurantRow,
 } from "@/lib/restaurant-types";
 import { CUISINE_ICONS } from "@/lib/cuisine-icons";
+import HeroArcGallery, { type HeroArcCardItem } from "@/components/HeroArcGallery";
 
 export type HeroShowcaseRestaurant = Pick<
   RestaurantRow,
@@ -80,8 +81,9 @@ export default async function HeroSection({ locale, counts, showcaseRestaurants 
         ],
       };
 
-  // 确保始终凑满 7 张卡片，形成左右完全对称的 3D 弧形画廊
-  const cards = Array.from({ length: 7 }, (_, idx) => {
+  // 至少 9 张，最多 16 张真实高分正宗餐厅卡片，支持无限环形左右滑动
+  const cardCount = Math.max(9, Math.min(16, showcaseRestaurants.length));
+  const cards: HeroArcCardItem[] = Array.from({ length: cardCount }, (_, idx) => {
     const item = showcaseRestaurants[idx];
     if (!item) {
       return {
@@ -90,7 +92,7 @@ export default async function HeroSection({ locale, counts, showcaseRestaurants 
         photo: FALLBACK_PHOTOS[idx % FALLBACK_PHOTOS.length],
         name: locale === "zh" ? "精选正宗中餐" : "厳選ガチ中華",
         cuisineLabel: "",
-        rating: null as number | null,
+        rating: null,
       };
     }
 
@@ -135,44 +137,8 @@ export default async function HeroSection({ locale, counts, showcaseRestaurants 
         </div>
       </div>
 
-      {/* 视觉焦点：7 张 3D 弧形内凹真实餐厅画廊 */}
-      <div className="hero-arc-stage mt-8 sm:mt-10">
-        <div className="hero-arc-track">
-          {cards.map((card, idx) => (
-            <Link
-              key={card.key}
-              href={card.href}
-              className={`hero-arc-card hero-arc-pos-${idx} group`}
-            >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={card.photo} alt={card.name} />
-
-              {/* 正中央第 4 张卡叠「AI 鉴味光束」，左侧暗灰滤镜、右侧全彩食欲感 */}
-              {idx === 3 && (
-                <>
-                  <div className="hero-center-split-mask" aria-hidden />
-                  <div className="hero-center-beam" aria-hidden />
-                </>
-              )}
-
-              <div className="hero-arc-caption">
-                <div className="flex items-center justify-between gap-1.5 text-[11px] text-gold-300/90">
-                  <span className="truncate">{card.cuisineLabel}</span>
-                  {card.rating !== null && (
-                    <span className="inline-flex shrink-0 items-center gap-0.5 font-semibold text-white/95">
-                      <Star size={11} className="fill-gold-300 text-gold-300" />
-                      {card.rating.toFixed(1)}
-                    </span>
-                  )}
-                </div>
-                <div className="mt-0.5 truncate text-xs font-semibold text-white/95 sm:text-[13px]">
-                  {card.name}
-                </div>
-              </div>
-            </Link>
-          ))}
-        </div>
-      </div>
+      {/* 视觉焦点：可左右无限滑动的 3D 内凹弧形真实餐厅画廊 */}
+      <HeroArcGallery cards={cards} locale={locale} />
 
       {/* 菜系快捷细胶囊条（保留首页按菜系一键筛选功能） */}
       <div className="relative mx-auto mt-6 max-w-5xl px-4 sm:px-6">
