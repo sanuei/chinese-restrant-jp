@@ -129,6 +129,7 @@ async function getHeroShowcaseRestaurants(): Promise<HeroShowcaseRestaurant[]> {
         `SELECT id, name_zh, name_ja, name_original, cuisine_type, trusted_rating, raw_rating, photos
          FROM restaurants
          WHERE is_active = 1 AND authenticity = 'authentic'
+           AND COALESCE(business_status, 'OPERATIONAL') != 'CLOSED_PERMANENTLY'
            AND photos IS NOT NULL AND photos NOT IN ('', '[]')
          ORDER BY trusted_rating DESC, raw_review_count DESC
          LIMIT 36`

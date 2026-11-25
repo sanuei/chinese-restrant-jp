@@ -5,7 +5,7 @@ import { recordRestaurantView } from "@/lib/views";
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import { notFound } from "next/navigation";
-import { Star, MapPin, Phone, Globe, ShieldCheck, ShieldAlert, MapPinned, TrainFront } from "lucide-react";
+import { Star, MapPin, Phone, Globe, ShieldCheck, ShieldAlert, MapPinned, TrainFront, AlertTriangle } from "lucide-react";
 import RatingExplainer from "@/components/RatingExplainer";
 import FavoriteButton from "@/components/FavoriteButton";
 import ShareButton from "@/components/ShareButton";
@@ -16,6 +16,8 @@ import {
   getRating,
   getRestaurantName,
   getRestaurantSummary,
+  isPermanentlyClosed,
+  isTemporarilyClosed,
   normalizeAuthenticity,
   normalizeCuisineType,
   getStationLabel,
@@ -40,13 +42,15 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     if (!restaurant) return {};
 
     const name = getRestaurantName(restaurant, locale);
+    const closed = isPermanentlyClosed(restaurant);
     const summary = getRestaurantSummary(restaurant, locale);
     const photos = parsePhotoReferences(restaurant.photos);
     const ogImage = photos.length > 0 ? photoSrc(photos[0], 1200) : undefined;
     const isZh = locale === "zh";
+    const pageTitle = closed ? `${isZh ? "【已停业】" : "【閉店】"}${name}` : name;
 
     return {
-      title: name,
+      title: pageTitle,
       description: summary || `${name} のガチ中華評価、Google レビュー分析、可信评分。`,
       alternates: {
         canonical: `/${locale}/restaurants/${id}`,
@@ -57,7 +61,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
         },
       },
       openGraph: {
-        title: name,
+        title: pageTitle,
         description: summary || undefined,
         url: `/${locale}/restaurants/${id}`,
         type: "article",
@@ -112,6 +116,9 @@ export default async function RestaurantDetailPage({ params }: Props) {
   const stationLabel = getStationLabel(restaurant, locale);
   const authenticity = normalizeAuthenticity(restaurant.authenticity);
   const cuisineType = normalizeCuisineType(restaurant.cuisine_type);
+  const closedPermanently = isPermanentlyClosed(restaurant);
+  const closedTemporarily = isTemporarilyClosed(restaurant);
+  const isZh = locale === "zh";
   
   const rawPhotos = parsePhotoReferences(restaurant.photos).slice(0, 5);
   // 经由 /api/photo 代理（R2 缓存），不再每次展示都直连 Google 计费
@@ -131,20 +138,68 @@ export default async function RestaurantDetailPage({ params }: Props) {
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
       <JsonLd data={restaurantJsonLd} />
       <JsonLd data={breadcrumbJsonLd} />
+
+      {/* 停业 / 暂停营业醒目警示横幅 */}
+      {closedPermanently && (
+        <div
+          role="alert"
+          className="mb-6 flex items-start gap-3 rounded-xl border border-red-500/40 bg-red-950/55 px-5 py-4 text-red-100 shadow-lg"
+        >
+          <AlertTriangle size={20} className="mt-0.5 shrink-0 text-red-400" />
+          <div>
+            <div className="font-serif text-base font-bold text-red-200">
+              {isZh ? "该餐厅已停业" : "この店舗は閉店しました"}
+            </div>
+            <p className="mt-1 text-sm text-red-200/80">
+              {isZh
+                ? "本店已停止营业，以下资料与评价仅作历史留档参考，请勿前往。"
+                : "この店舗はすでに閉店しています。掲載情報・口コミは過去の参考記録として残しています。"}
+            </p>
+          </div>
+        </div>
+      )}
+
+      {closedTemporarily && (
+        <div
+          role="alert"
+          className="mb-6 flex items-start gap-3 rounded-xl border border-amber-400/40 bg-amber-950/45 px-5 py-4 text-amber-100"
+        >
+          <AlertTriangle size={20} className="mt-0.5 shrink-0 text-amber-300" />
+          <div>
+            <div className="font-serif text-base font-bold text-amber-200">
+              {isZh ? "该餐厅目前暂停营业" : "この店舗は一時休業中です"}
+            </div>
+            <p className="mt-1 text-sm text-amber-200/80">
+              {isZh
+                ? "出发前建议先在 Google 地图或致电确认最新营业状态。"
+                : "ご訪問前に Google マップやお電話で最新の営業状況をご確認ください。"}
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* 头部：照片轮播占位符 */}
-      <div className="flex gap-2 h-64 sm:h-96 mb-8 overflow-hidden rounded-2xl">
+      <div className="relative flex gap-2 h-64 sm:h-96 mb-8 overflow-hidden rounded-2xl">
         {photos.length > 0 ? (
           <>
             <div className="flex-1 overflow-hidden bg-warm-100">
                {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={photos[0]} alt={name} className="w-full h-full object-cover" />
+              <img
+                src={photos[0]}
+                alt={name}
+                className={`w-full h-full object-cover ${closedPermanently ? "grayscale opacity-65" : ""}`}
+              />
             </div>
             {photos.length > 1 && (
               <div className="w-1/3 flex flex-col gap-2">
                 {photos.slice(1, 3).map((p, i) => (
                   <div key={i} className="flex-1 overflow-hidden bg-warm-100">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={p} alt={name} className="w-full h-full object-cover" />
+                    <img
+                      src={p}
+                      alt={name}
+                      className={`w-full h-full object-cover ${closedPermanently ? "grayscale opacity-65" : ""}`}
+                    />
                   </div>
                 ))}
               </div>
@@ -155,13 +210,28 @@ export default async function RestaurantDetailPage({ params }: Props) {
             暂无照片
           </div>
         )}
+        {closedPermanently && (
+          <div className="pointer-events-none absolute left-4 top-4 rounded-full border border-red-400/50 bg-black/80 px-4 py-1.5 font-serif text-sm font-bold tracking-wider text-red-300 backdrop-blur-md">
+            {isZh ? "已停业" : "閉店"}
+          </div>
+        )}
       </div>
 
       <div className="flex flex-col md:flex-row gap-12">
         {/* 左侧：主要信息 */}
         <div className="flex-1">
           <div className="mb-6">
-            <div className="flex items-center gap-3 mb-3">
+            <div className="flex flex-wrap items-center gap-3 mb-3">
+              {closedPermanently && (
+                <span className="inline-flex items-center gap-1 rounded-full border border-red-500/50 bg-red-950/80 px-3 py-1 font-serif text-xs font-bold tracking-wider text-red-200">
+                  {isZh ? "已停业" : "閉店"}
+                </span>
+              )}
+              {closedTemporarily && (
+                <span className="inline-flex items-center gap-1 rounded-full border border-amber-400/50 bg-amber-950/70 px-3 py-1 font-serif text-xs font-bold tracking-wider text-amber-200">
+                  {isZh ? "暂停营业" : "休業中"}
+                </span>
+              )}
               <span className={`badge-${authenticity}`}>
                 {ta(authenticity)}
               </span>
@@ -169,7 +239,7 @@ export default async function RestaurantDetailPage({ params }: Props) {
                 {tc(cuisineType)}
               </span>
             </div>
-            <h1 className="font-serif font-black text-4xl leading-tight mb-4 text-ink-900">
+            <h1 className={`font-serif font-black text-4xl leading-tight mb-4 ${closedPermanently ? "text-ink-400 line-through decoration-red-400/60" : "text-ink-900"}`}>
               {name}
             </h1>
             
@@ -273,7 +343,14 @@ export default async function RestaurantDetailPage({ params }: Props) {
               />
               </div>
             </div>
-            <OpeningHours raw={restaurant.opening_hours} locale={locale} />
+            {closedPermanently ? (
+              <div className="mb-4 flex items-center gap-2 rounded-lg border border-red-500/35 bg-red-950/50 px-3 py-2.5 text-sm font-semibold text-red-200">
+                <AlertTriangle size={16} className="shrink-0 text-red-400" />
+                <span>{isZh ? "已停业（仅供参考）" : "閉店しました（参考情報）"}</span>
+              </div>
+            ) : (
+              <OpeningHours raw={restaurant.opening_hours} locale={locale} />
+            )}
             {stationLabel && (
               <div className="mb-4 flex items-start gap-2 rounded-lg bg-warm-50 px-3 py-2 text-sm text-ink-700">
                 <TrainFront size={16} className="mt-0.5 shrink-0 text-vermilion-700" />

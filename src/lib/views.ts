@@ -80,6 +80,7 @@ async function queryTrending(limit: number): Promise<TrendingRestaurant[]> {
        FROM restaurant_views v
        JOIN restaurants r ON r.id = v.restaurant_id
        WHERE v.view_date >= ? AND r.is_active = 1 AND r.authenticity = 'authentic'
+         AND COALESCE(r.business_status, 'OPERATIONAL') != 'CLOSED_PERMANENTLY'
        GROUP BY r.id
        ORDER BY view_count DESC, r.trusted_rating DESC
        LIMIT ?`
@@ -99,7 +100,8 @@ async function queryTrending(limit: number): Promise<TrendingRestaurant[]> {
     .prepare(
       `SELECT ${TRENDING_COLUMNS}, 0 AS view_count
        FROM restaurants r
-       WHERE r.is_active = 1 AND r.authenticity = 'authentic' ${placeholders}
+       WHERE r.is_active = 1 AND r.authenticity = 'authentic'
+         AND COALESCE(r.business_status, 'OPERATIONAL') != 'CLOSED_PERMANENTLY' ${placeholders}
        ORDER BY r.trusted_rating DESC, r.raw_review_count DESC
        LIMIT ?`
     )

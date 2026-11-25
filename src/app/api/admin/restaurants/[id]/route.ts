@@ -47,7 +47,7 @@ export async function PUT(req: NextRequest, { params }: RouteParams) {
       authenticity_reason_zh, authenticity_reason_ja,
       raw_rating, trusted_rating, raw_review_count, trusted_review_count,
       ai_summary_zh, ai_summary_ja,
-      opening_hours, photos, is_active,
+      opening_hours, photos, business_status, is_active,
     } = body;
 
     await db.prepare(`
@@ -78,6 +78,7 @@ export async function PUT(req: NextRequest, { params }: RouteParams) {
         ai_summary_ja = ?,
         opening_hours = ?,
         photos = ?,
+        business_status = COALESCE(?, business_status),
         is_active = COALESCE(?, is_active),
         updated_at = datetime('now')
       WHERE id = ?
@@ -91,6 +92,7 @@ export async function PUT(req: NextRequest, { params }: RouteParams) {
       raw_review_count ?? null, trusted_review_count ?? null,
       ai_summary_zh ?? null, ai_summary_ja ?? null,
       opening_hours ?? null, photos ?? null,
+      business_status ?? null,
       is_active ?? null,
       id
     ).run();
@@ -118,6 +120,7 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
       "nearest_station_zh",
       "station_distance_m",
       "name_zh",
+      "business_status",
       "is_active",
     ] as const;
 

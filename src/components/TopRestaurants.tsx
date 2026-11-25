@@ -72,6 +72,7 @@ export default async function TopRestaurants({
       const { results = [] } = await db.prepare(
         `SELECT ${CARD_COLUMNS} FROM restaurants
          WHERE is_active = 1 AND authenticity = 'authentic'
+           AND COALESCE(business_status, 'OPERATIONAL') != 'CLOSED_PERMANENTLY'
          ORDER BY trusted_rating DESC, raw_review_count DESC`
       ).all<RestaurantRow>();
 
@@ -92,7 +93,8 @@ export default async function TopRestaurants({
         const total = await db.prepare(
           `SELECT COUNT(*) AS count
            FROM restaurants
-           WHERE is_active = 1 AND authenticity = 'authentic'`
+           WHERE is_active = 1 AND authenticity = 'authentic'
+             AND COALESCE(business_status, 'OPERATIONAL') != 'CLOSED_PERMANENTLY'`
         ).first<{ count: number }>();
         totalPages = Math.max(1, Math.ceil((total?.count || 0) / limit));
         currentPage = Math.min(currentPage, totalPages);
@@ -101,6 +103,7 @@ export default async function TopRestaurants({
       const { results = [] } = await db.prepare(
         `SELECT ${CARD_COLUMNS} FROM restaurants
          WHERE is_active = 1 AND authenticity = 'authentic'
+           AND COALESCE(business_status, 'OPERATIONAL') != 'CLOSED_PERMANENTLY'
          ORDER BY last_synced_at DESC, updated_at DESC, trusted_rating DESC
          LIMIT ? OFFSET ?`
       ).bind(limit, paginated ? (currentPage - 1) * limit : 0).all<RestaurantRow>();

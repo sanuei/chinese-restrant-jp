@@ -28,6 +28,7 @@ interface Restaurant {
   trusted_review_count: number;
   ai_summary_zh: string; ai_summary_ja: string;
   opening_hours: string; photos: string;
+  business_status?: string;
   is_active: number; last_synced_at: string; created_at: string;
 }
 
@@ -56,6 +57,7 @@ export default function EditRestaurantPage({ params }: { params: Promise<{ id: s
     raw_rating: "", trusted_rating: "",
     raw_review_count: "", trusted_review_count: "",
     ai_summary_zh: "", ai_summary_ja: "",
+    business_status: "OPERATIONAL",
     is_active: "1",
   });
 
@@ -91,6 +93,7 @@ export default function EditRestaurantPage({ params }: { params: Promise<{ id: s
         trusted_review_count: String(r.trusted_review_count || ""),
         ai_summary_zh: r.ai_summary_zh || "",
         ai_summary_ja: r.ai_summary_ja || "",
+        business_status: r.business_status || "OPERATIONAL",
         is_active: String(r.is_active ?? 1),
       });
     } catch (e) {
@@ -134,6 +137,7 @@ export default function EditRestaurantPage({ params }: { params: Promise<{ id: s
         trusted_review_count: form.trusted_review_count ? parseInt(form.trusted_review_count) : null,
         ai_summary_zh: form.ai_summary_zh || null,
         ai_summary_ja: form.ai_summary_ja || null,
+        business_status: form.business_status || "OPERATIONAL",
         is_active: parseInt(form.is_active),
       };
 
@@ -367,7 +371,16 @@ export default function EditRestaurantPage({ params }: { params: Promise<{ id: s
             </Section>
 
             <Section title="系统">
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-3 gap-3">
+                <Field label="营业状态" id="business_status">
+                  <select id="business_status" value={form.business_status}
+                    onChange={e => setForm(f => ({ ...f, business_status: e.target.value }))}
+                    className="field-input">
+                    <option value="OPERATIONAL">🟢 正常营业</option>
+                    <option value="CLOSED_TEMPORARILY">🟡 暂停营业</option>
+                    <option value="CLOSED_PERMANENTLY">🔴 已停业</option>
+                  </select>
+                </Field>
                 <Field label="激活状态" id="is_active">
                   <select id="is_active" value={form.is_active}
                     onChange={e => setForm(f => ({ ...f, is_active: e.target.value }))}

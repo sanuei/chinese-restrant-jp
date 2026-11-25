@@ -272,8 +272,8 @@ function resolveActiveState(
 ): { insertActive: number; updateActive: number | null; permanentlyClosed: boolean } {
   const permanentlyClosed = snapshot.place.business_status === "CLOSED_PERMANENTLY";
   if (permanentlyClosed) {
-    // 永久歇业无论新旧店一律下架，但保留记录避免后续重复采集
-    return { insertActive: 0, updateActive: 0, permanentlyClosed: true };
+    // 永久歇业：新店不自动上架（insertActive=0），已有老店保持原 is_active 以便页面展示「已停业 / 閉店」标识
+    return { insertActive: 0, updateActive: null, permanentlyClosed: true };
   }
 
   if (options.isActive === 0 || options.isActive === 1) {
@@ -316,13 +316,15 @@ export async function saveRestaurantSyncSnapshot(
   const { place, aiAnalysis } = snapshot;
   const { insertActive, updateActive, permanentlyClosed } = resolveActiveState(snapshot, options);
 
+  const businessStatus = place.business_status || "OPERATIONAL";
+
   if (aiAnalysis === null) {
     // 仅刷新模式：只更新 Google 原始数据字段，完全不碰菜系/正宗度/AI摘要/评论表
     await db.prepare(`
       INSERT INTO restaurants (
         id, name_original, address, city, ward, lat, lng, phone, website, google_maps_url, price_level,
-        raw_rating, raw_review_count, photos, opening_hours, is_active, last_synced_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+        raw_rating, raw_review_count, photos, opening_hours, business_status, is_active, last_synced_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
       ON CONFLICT(id) DO UPDATE SET
         name_original = excluded.name_original,
         address = excluded.address,
@@ -345,6 +347,9 @@ export async function saveRestaurantSyncSnapshot(
           WHEN restaurants.photos IS NULL OR restaurants.photos IN ('', '[]')
           THEN excluded.photos ELSE restaurants.photos END,
         opening_hours = excluded.opening_hours,
+        business_status = CASE
+          WHEN restaurants.business_status = 'CLOSED_PERMANENTLY' THEN restaurants.business_status
+          ELSE excluded.business_status END,
         is_active = COALESCE(?, restaurants.is_active),
         last_synced_at = excluded.last_synced_at
     `).bind(
@@ -369,6 +374,7 @@ export async function saveRestaurantSyncSnapshot(
             weekday_text: place.opening_hours.weekday_text || [],
           })
         : null,
+      businessStatus,
       insertActive,
       updateActive
     ).run();
@@ -383,8 +389,8 @@ export async function saveRestaurantSyncSnapshot(
       cuisine_type, cuisine_confidence, dish_type, authenticity, authenticity_score,
       authenticity_reason_zh, authenticity_reason_ja,
       raw_rating, trusted_rating, raw_review_count, trusted_review_count,
-      ai_summary_zh, ai_summary_ja, photos, opening_hours, is_active, last_synced_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+      ai_summary_zh, ai_summary_ja, photos, opening_hours, business_status, is_active, last_synced_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
     ON CONFLICT(id) DO UPDATE SET
       -- 仅当库里原本没有中文店名时才自动填充，不覆盖人工或脚本维护好的中文名
       name_zh = CASE
@@ -418,6 +424,9 @@ export async function saveRestaurantSyncSnapshot(
         WHEN restaurants.photos IS NULL OR restaurants.photos IN ('', '[]')
         THEN excluded.photos ELSE restaurants.photos END,
       opening_hours = excluded.opening_hours,
+      business_status = CASE
+        WHEN restaurants.business_status = 'CLOSED_PERMANENTLY' THEN restaurants.business_status
+        ELSE excluded.business_status END,
       is_active = COALESCE(?, restaurants.is_active),
       last_synced_at = excluded.last_synced_at
   `).bind(
@@ -454,6 +463,7 @@ export async function saveRestaurantSyncSnapshot(
           weekday_text: place.opening_hours.weekday_text || [],
         })
       : null,
+    businessStatus,
     insertActive,
     updateActive
   ).run();

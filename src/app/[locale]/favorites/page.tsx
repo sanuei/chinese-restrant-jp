@@ -10,6 +10,8 @@ import {
   getRating,
   getRestaurantName,
   getRestaurantSummary,
+  isPermanentlyClosed,
+  isTemporarilyClosed,
   normalizeAuthenticity,
   normalizeCuisineType,
   normalizePriceLevel,
@@ -102,6 +104,8 @@ export default async function FavoritesPage({ params }: Props) {
             const authenticity = normalizeAuthenticity(restaurant.authenticity);
             const cuisineType = normalizeCuisineType(restaurant.cuisine_type);
             const priceLevel = normalizePriceLevel(restaurant.price_level);
+            const closedPermanently = isPermanentlyClosed(restaurant);
+            const closedTemporarily = isTemporarilyClosed(restaurant);
 
             let photoUrl = "https://images.unsplash.com/photo-1563245372-f21724e3856d?q=80&w=600&auto=format&fit=crop";
             const photos = parsePhotoReferences(restaurant.photos);
@@ -110,15 +114,25 @@ export default async function FavoritesPage({ params }: Props) {
             }
 
             return (
-              <Link key={restaurant.id} href={`/${locale}/restaurants/${restaurant.id}`} className="restaurant-card group block">
+              <Link key={restaurant.id} href={`/${locale}/restaurants/${restaurant.id}`} className={`restaurant-card group block ${closedPermanently ? "opacity-75" : ""}`}>
                 <div className="relative h-48 overflow-hidden bg-warm-100">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={photoUrl}
                     alt={name}
-                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                    className={`w-full h-full object-cover transition-transform duration-500 group-hover:scale-105 ${closedPermanently ? "grayscale" : ""}`}
                   />
                   <div className="absolute top-3 right-3 flex gap-2">
+                    {closedPermanently && (
+                      <span className="inline-flex items-center rounded-full border border-red-400/50 bg-black/80 px-2.5 py-0.5 font-serif text-xs font-bold text-red-300 backdrop-blur-md">
+                        {locale === "zh" ? "已停业" : "閉店"}
+                      </span>
+                    )}
+                    {closedTemporarily && (
+                      <span className="inline-flex items-center rounded-full border border-amber-400/50 bg-black/80 px-2.5 py-0.5 font-serif text-xs font-bold text-amber-200 backdrop-blur-md">
+                        {locale === "zh" ? "暂停营业" : "休業中"}
+                      </span>
+                    )}
                     <span className={`badge-${authenticity}`}>
                       {ta(authenticity)}
                     </span>

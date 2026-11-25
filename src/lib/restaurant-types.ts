@@ -63,6 +63,7 @@ export interface RestaurantRow {
   nearest_station: string | null;
   nearest_station_zh: string | null;
   station_distance_m: number | null;
+  business_status?: string | null;
   is_active: number | null;
   last_synced_at: string | null;
   created_at: string | null;
@@ -101,6 +102,21 @@ export function normalizeAuthenticity(value: string | null | undefined): Authent
 
 export function normalizePriceLevel(value: number | null | undefined): PriceLevel | null {
   return value === 1 || value === 2 || value === 3 || value === 4 ? value : null;
+}
+
+export type BusinessStatus = "OPERATIONAL" | "CLOSED_TEMPORARILY" | "CLOSED_PERMANENTLY";
+
+export function normalizeBusinessStatus(value: string | null | undefined): BusinessStatus {
+  if (value === "CLOSED_PERMANENTLY" || value === "CLOSED_TEMPORARILY") return value;
+  return "OPERATIONAL";
+}
+
+export function isPermanentlyClosed(restaurant: Pick<RestaurantRow, "business_status">): boolean {
+  return restaurant.business_status === "CLOSED_PERMANENTLY";
+}
+
+export function isTemporarilyClosed(restaurant: Pick<RestaurantRow, "business_status">): boolean {
+  return restaurant.business_status === "CLOSED_TEMPORARILY";
 }
 
 // 下面几个取值函数只用到少数几列，用结构化的最小类型而不是整行 RestaurantRow，
