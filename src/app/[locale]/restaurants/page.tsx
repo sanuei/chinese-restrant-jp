@@ -4,8 +4,9 @@ import { getFavoritedIds } from "@/lib/favorites";
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import Link from "next/link";
-import { Filter, Map, MapPin, Search, Star } from "lucide-react";
+import { Filter, MapPin, Star, TrainFront } from "lucide-react";
 import FavoriteButton from "@/components/FavoriteButton";
+import RestaurantFilterBar from "@/components/RestaurantFilterBar";
 import {
   authenticityTypes,
   cuisineTypes,
@@ -13,10 +14,12 @@ import {
   getRating,
   getRestaurantName,
   getRestaurantSummary,
+  getStationLabel,
   isPermanentlyClosed,
   isTemporarilyClosed,
   normalizeAuthenticity,
   normalizeCuisineType,
+  normalizeDishType,
   normalizePriceLevel,
   parsePhotoReferences,
   photoSrc,
@@ -84,11 +87,15 @@ export async function generateMetadata({
   const cuisine = getCuisineFilter(getQueryValue(queryParams.cuisine));
   const isZh = locale === "zh";
   const title = q
-    ? (isZh ? `${q} 餐厅搜索` : `${q} の検索結果`)
-    : (isZh ? "东京中餐餐厅索引" : "東京の中国料理レストラン一覧");
+    ? isZh
+      ? `${q} 餐厅搜索`
+      : `${q} の検索結果`
+    : isZh
+      ? "东京中餐餐厅索引"
+      : "東京の中国料理レストラン一覧";
   const description = isZh
-    ? "按菜系、正宗度、可信评分筛选东京和关东ガチ中華。支持川菜、粤菜、茶餐厅、湖南菜等关键词搜索。"
-    : "料理ジャンル、認定、信頼スコアで東京・関東のガチ中華を検索できます。";
+    ? "按菜系、品类、熟食卤味、中华物产店、正宗度与可信评分筛选东京和关东中餐。"
+    : "料理ジャンル、業態、認定、信頼スコアで東京・関東のガチ中華を検索できます。";
   const query = new URLSearchParams();
   if (q) query.set("q", q);
   if (cuisine) query.set("cuisine", cuisine);
@@ -110,6 +117,7 @@ export default async function RestaurantsPage({
   searchParams: Promise<SearchParams>;
 }) {
   const { locale } = await params;
+  const isZh = locale === "zh";
   const t = await getTranslations({ locale, namespace: "restaurant" });
   const ta = await getTranslations({ locale, namespace: "auth_badge" });
   const tc = await getTranslations({ locale, namespace: "cuisine" });
@@ -124,11 +132,9 @@ export default async function RestaurantsPage({
   const authenticityFilter = getAuthenticityFilter(getQueryValue(queryParams.authenticity));
   const minRating = getMinRatingFilter(getQueryValue(queryParams.minRating));
   const sort = getSortOption(getQueryValue(queryParams.sort));
-  const hasFilters = Boolean(q || cuisine || dishType || station || authenticityFilter || minRating || sort !== "rating");
 
   const db = await getDb();
 
-  // 构建查询语句
   let whereSql = `WHERE is_active = 1`;
   const binds: SqlBind[] = [];
 
@@ -170,19 +176,26 @@ export default async function RestaurantsPage({
 
   // 停业店保留供搜索查看，但自动沉底不抢正常营业餐厅的展示位
   const closedOrderPrefix = `CASE WHEN business_status = 'CLOSED_PERMANENTLY' THEN 1 ELSE 0 END ASC`;
-  const orderSql = sort === "reviews"
-    ? `ORDER BY ${closedOrderPrefix}, raw_review_count DESC, trusted_rating DESC`
-    : sort === "newest"
-      ? `ORDER BY ${closedOrderPrefix}, last_synced_at DESC, updated_at DESC, trusted_rating DESC`
-      : `ORDER BY ${closedOrderPrefix}, trusted_rating DESC, raw_review_count DESC`;
+  const orderSql =
+    sort === "reviews"
+      ? `ORDER BY ${closedOrderPrefix}, raw_review_count DESC, trusted_rating DESC`
+      : sort === "newest"
+        ? `ORDER BY ${closedOrderPrefix}, last_synced_at DESC, updated_at DESC, trusted_rating DESC`
+        : `ORDER BY ${closedOrderPrefix}, trusted_rating DESC, raw_review_count DESC`;
 
   const displayLimit = 120;
   let restaurants: RestaurantRow[] = [];
   let totalCount = 0;
   try {
     const [countRow, listRes] = await Promise.all([
-      db.prepare(`SELECT COUNT(*) AS total FROM restaurants ${whereSql}`).bind(...binds).first<{ total: number }>(),
-      db.prepare(`SELECT * FROM restaurants ${whereSql} ${orderSql} LIMIT ${displayLimit}`).bind(...binds).all<RestaurantRow>(),
+      db
+        .prepare(`SELECT COUNT(*) AS total FROM restaurants ${whereSql}`)
+        .bind(...binds)
+        .first<{ total: number }>(),
+      db
+        .prepare(`SELECT * FROM restaurants ${whereSql} ${orderSql} LIMIT ${displayLimit}`)
+        .bind(...binds)
+        .all<RestaurantRow>(),
     ]);
     restaurants = listRes.results || [];
     totalCount = countRow?.total ?? restaurants.length;
@@ -204,235 +217,266 @@ export default async function RestaurantsPage({
   const filterQueryString = filterQuery.toString();
   const mapHref = `/${locale}/map${filterQueryString ? `?${filterQueryString}` : ""}`;
   const stationTitle = stationInfo ? getStationAreaLabel(stationInfo, locale) : "";
-  const copy = locale === "zh"
-    ? {
-        title: q
-          ? `搜索结果: "${q}"`
-          : stationTitle
-            ? `${stationTitle} 附近餐厅`
-            : "全部餐厅",
-        subtitle: "按菜系、品类、商圈车站和可信评分筛选东京与关东餐厅。",
-        search: "餐厅、菜系、地区",
-        allCuisines: "全部菜系",
-        allDishTypes: "全部品类",
-        allStations: "全部商圈/车站",
-        allAuthenticity: "全部认证",
-        minRating: "最低可信评分",
-        anyRating: "不限评分",
-        sort: "排序",
-        sortRating: "可信评分优先",
-        sortReviews: "评论量优先",
-        sortNewest: "最近同步优先",
-        submit: "筛选",
-        reset: "清除",
-        map: "地图视图",
-        count: totalCount > restaurants.length
-          ? `找到 ${totalCount} 家餐厅（展示前 ${restaurants.length} 家）`
-          : `找到 ${totalCount} 家餐厅`,
-        empty: "没有找到相关餐厅。请尝试其他关键词或筛选条件。",
-      }
-    : {
-        title: q
-          ? `検索結果: "${q}"`
-          : stationTitle
-            ? `${stationTitle} エリアのレストラン`
-            : "すべてのレストラン",
-        subtitle: "料理ジャンル・業態・駅エリア・信頼スコアで東京と関東の店を絞り込み。",
-        search: "店名・ジャンル・エリア",
-        allCuisines: "すべてのジャンル",
-        allDishTypes: "すべての業態",
-        allStations: "すべての駅・エリア",
-        allAuthenticity: "すべての認定",
-        minRating: "最低信頼スコア",
-        anyRating: "指定なし",
-        sort: "並び替え",
-        sortRating: "信頼スコア順",
-        sortReviews: "レビュー数順",
-        sortNewest: "同期が新しい順",
-        submit: "絞り込む",
-        reset: "クリア",
-        map: "マップ表示",
-        count: totalCount > restaurants.length
-          ? `${totalCount}件のレストラン（上位${restaurants.length}件を表示）`
-          : `${totalCount}件のレストラン`,
-        empty: "該当するレストランが見つかりません。条件を変えてお試しください。",
-      };
+  const dishTitle = dishType ? td(dishType) : "";
+
+  const headingTitle = q
+    ? isZh
+      ? `搜索结果: "${q}"`
+      : `検索結果: "${q}"`
+    : dishTitle
+      ? isZh
+        ? `${dishTitle}精选`
+        : `${dishTitle}一覧`
+      : stationTitle
+        ? isZh
+          ? `${stationTitle} 附近餐厅`
+          : `${stationTitle} エリアのレストラン`
+        : isZh
+          ? "全部餐厅"
+          : "すべてのレストラン";
+
+  const countText = isZh
+    ? totalCount > restaurants.length
+      ? `找到 ${totalCount} 家门店（展示前 ${restaurants.length} 家）`
+      : `共找到 ${totalCount} 家门店`
+    : totalCount > restaurants.length
+      ? `${totalCount}件ヒット（上位${restaurants.length}件を表示）`
+      : `${totalCount}件の店舗`;
+
+  const emptyText = isZh
+    ? "没有找到符合条件的门店，试试切换品类或清空部分筛选条件。"
+    : "該当する店舗が見つかりません。条件を変えてお試しください。";
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-      <div className="flex flex-col gap-6 mb-8">
-        <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-4">
-          <div>
-            <div className="inline-flex items-center gap-2 text-xs font-bold tracking-[0.18em] uppercase mb-2 text-vermilion-700">
-              <Filter size={14} />
-              {locale === "zh" ? "餐厅索引" : "Restaurant Index"}
-            </div>
-            <h1 className="font-serif font-bold text-3xl mb-2" style={{ color: "var(--color-ink-900)" }}>
-              {copy.title}
-            </h1>
-            <p className="text-sm text-ink-400">{copy.subtitle}</p>
-          </div>
-
-          <Link href={mapHref} className="btn-primary w-full sm:w-auto">
-            <Map size={16} />
-            {copy.map}
-          </Link>
+    <div className="mx-auto max-w-7xl px-4 pt-4 pb-10 sm:px-6 md:py-10 lg:px-8">
+      {/* 桌面端页头标题（移动端为极速扫店模式，首屏直接展示美团风吸顶搜索与4栏筛选） */}
+      <div className="mb-5 hidden md:block">
+        <div className="mb-1.5 inline-flex items-center gap-2 text-xs font-bold tracking-[0.18em] uppercase text-vermilion-700">
+          <Filter size={13} />
+          {isZh ? "餐厅与特色门店索引" : "Restaurant Index"}
         </div>
-
-        <form action={`/${locale}/restaurants`} className="bg-white border border-warm-200 rounded-xl shadow-sm p-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-[1.4fr_1fr_1fr_1fr_1fr_1fr_1fr_auto] gap-3">
-            <label className="relative">
-              <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-400 pointer-events-none z-10" />
-              <input
-                name="q"
-                defaultValue={q}
-                placeholder={copy.search}
-                className="search-input search-input-compact search-input-with-icon"
-              />
-            </label>
-
-            <select name="cuisine" defaultValue={cuisine} className="filter-select">
-              <option value="">{copy.allCuisines}</option>
-              {cuisineTypes.map((type) => (
-                <option key={type} value={type}>{tc(type)}</option>
-              ))}
-            </select>
-
-            <select name="dish_type" defaultValue={dishType} className="filter-select">
-              <option value="">{copy.allDishTypes}</option>
-              {dishTypes.map((type) => (
-                <option key={type} value={type}>{td(type)}</option>
-              ))}
-            </select>
-
-            <select name="station" defaultValue={station} className="filter-select">
-              <option value="">{copy.allStations}</option>
-              {stationAreas.map((area) => (
-                <option key={area.key} value={area.key}>{getStationAreaLabel(area, locale)}</option>
-              ))}
-            </select>
-
-            <select name="authenticity" defaultValue={authenticityFilter} className="filter-select">
-              <option value="">{copy.allAuthenticity}</option>
-              {authenticityTypes.map((type) => (
-                <option key={type} value={type}>{ta(type)}</option>
-              ))}
-            </select>
-
-            <select name="minRating" defaultValue={minRating ? String(minRating) : ""} className="filter-select">
-              <option value="">{copy.anyRating}</option>
-              {minRatingOptions.map((rating) => (
-                <option key={rating} value={rating}>{copy.minRating} {rating}+</option>
-              ))}
-            </select>
-
-            <select name="sort" defaultValue={sort} className="filter-select">
-              <option value="rating">{copy.sortRating}</option>
-              <option value="reviews">{copy.sortReviews}</option>
-              <option value="newest">{copy.sortNewest}</option>
-            </select>
-
-            <div className="flex gap-2">
-              <button type="submit" className="btn-primary min-h-11 px-4 flex-1 xl:flex-none">
-                {copy.submit}
-              </button>
-              {hasFilters && (
-                <Link
-                  href={`/${locale}/restaurants`}
-                  className="inline-flex min-h-11 items-center justify-center rounded-md border border-warm-200 bg-white px-4 text-sm font-semibold text-ink-700 hover:text-vermilion-700"
-                >
-                  {copy.reset}
-                </Link>
-              )}
-            </div>
-          </div>
-        </form>
-
-        <div className="text-sm text-ink-400">{copy.count}</div>
+        <h1 className="font-serif text-3xl font-bold text-ink-900">{headingTitle}</h1>
+        <p className="mt-1 text-sm text-ink-400">
+          {isZh
+            ? "按细分品类、熟食卤味、中华物产店、菜系、商圈与可信评分快速筛选东京与关东好店。"
+            : "業態・料理ジャンル・駅エリア・信頼スコアで東京と関東のお店を絞り込み。"}
+        </p>
       </div>
 
+      {/* 全新双端自适应筛选栏（桌面宽敞双层面板 + 移动端美团4栏下拉抽屉） */}
+      <RestaurantFilterBar
+        locale={locale}
+        initial={{
+          q,
+          cuisine,
+          dishType,
+          station,
+          authenticity: authenticityFilter,
+          minRating: minRating ? String(minRating) : "",
+          sort,
+        }}
+        cuisineOptions={cuisineTypes.map((c) => ({ value: c, label: tc(c) }))}
+        dishTypeOptions={dishTypes.map((d) => ({ value: d, label: td(d) }))}
+        stationOptions={stationAreas.map((s) => ({
+          value: s.key,
+          label: getStationAreaLabel(s, locale),
+        }))}
+        authenticityOptions={authenticityTypes.map((a) => ({ value: a, label: ta(a) }))}
+        mapHref={mapHref}
+        totalCountText={countText}
+      />
+
+      {/* 门店列表 */}
       {restaurants.length === 0 ? (
-        <div className="text-center py-20 text-ink-400">
-          <p>{copy.empty}</p>
+        <div className="py-20 text-center text-sm text-ink-400">
+          <p>{emptyText}</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="mt-4 grid grid-cols-1 gap-3 md:mt-6 md:grid-cols-2 md:gap-5 lg:grid-cols-3">
           {restaurants.map((restaurant) => {
             const name = getRestaurantName(restaurant, locale);
             const summary = getRestaurantSummary(restaurant, locale);
             const authenticity = normalizeAuthenticity(restaurant.authenticity);
             const cuisineType = normalizeCuisineType(restaurant.cuisine_type);
+            const currentDish = normalizeDishType(restaurant.dish_type);
             const priceLevel = normalizePriceLevel(restaurant.price_level);
+            const stationLabel = getStationLabel(restaurant, locale);
             const closedPermanently = isPermanentlyClosed(restaurant);
             const closedTemporarily = isTemporarilyClosed(restaurant);
-            
-            let photoUrl = "https://images.unsplash.com/photo-1563245372-f21724e3856d?q=80&w=600&auto=format&fit=crop"; // fallback
+
+            let photoUrl =
+              "https://images.unsplash.com/photo-1563245372-f21724e3856d?q=80&w=600&auto=format&fit=crop";
             const photos = parsePhotoReferences(restaurant.photos);
             if (photos.length > 0) {
-              // 经由 /api/photo 代理（R2 缓存），不再每次展示都直连 Google 计费
-              photoUrl = photoSrc(photos[0], 800);
+              photoUrl = photoSrc(photos[0], 600);
             }
 
             return (
-              <Link key={restaurant.id} href={`/${locale}/restaurants/${restaurant.id}`} className={`restaurant-card group block ${closedPermanently ? "opacity-75" : ""}`}>
-                <div className="relative h-48 overflow-hidden bg-warm-100">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img 
-                    src={photoUrl} 
-                    alt={name}
-                    className={`w-full h-full object-cover transition-transform duration-500 group-hover:scale-105 ${closedPermanently ? "grayscale" : ""}`}
-                  />
-                  <div className="absolute top-3 right-3 flex gap-2">
-                    {closedPermanently && (
-                      <span className="inline-flex items-center rounded-full border border-red-400/50 bg-black/80 px-2.5 py-0.5 font-serif text-xs font-bold text-red-300 backdrop-blur-md">
-                        {locale === "zh" ? "已停业" : "閉店"}
-                      </span>
-                    )}
-                    {closedTemporarily && (
-                      <span className="inline-flex items-center rounded-full border border-amber-400/50 bg-black/80 px-2.5 py-0.5 font-serif text-xs font-bold text-amber-200 backdrop-blur-md">
-                        {locale === "zh" ? "暂停营业" : "休業中"}
-                      </span>
-                    )}
-                    <span className={`badge-${authenticity}`}>
+              <Link
+                key={restaurant.id}
+                href={`/${locale}/restaurants/${restaurant.id}`}
+                className={`restaurant-card group block overflow-hidden ${closedPermanently ? "opacity-75" : ""}`}
+              >
+                {/* ==================== 移动端：美团 App 经典左图右文紧凑信息流卡 ==================== */}
+                <div className="flex gap-3 p-3 md:hidden">
+                  <div className="relative h-28 w-28 shrink-0 overflow-hidden rounded-xl bg-warm-100">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={photoUrl}
+                      alt={name}
+                      loading="lazy"
+                      className={`h-full w-full object-cover ${closedPermanently ? "grayscale" : ""}`}
+                    />
+                    <span
+                      className={`badge-${authenticity} !px-1.5 !py-[1px] !text-[10px] absolute top-1.5 left-1.5`}
+                    >
                       {ta(authenticity)}
                     </span>
+                    {(closedPermanently || closedTemporarily) && (
+                      <span className="absolute inset-x-0 bottom-0 bg-black/75 py-0.5 text-center text-[10px] font-bold text-amber-200">
+                        {closedPermanently
+                          ? isZh
+                            ? "已停业"
+                            : "閉店"
+                          : isZh
+                            ? "暂停营业"
+                            : "休業中"}
+                      </span>
+                    )}
                   </div>
-                  <div className="absolute top-3 left-3">
-                    <FavoriteButton
-                      restaurantId={restaurant.id}
-                      initialFavorited={favoritedIds.has(restaurant.id)}
-                      isLoggedIn={isLoggedIn}
-                      locale={locale}
-                    />
+
+                  <div className="flex min-w-0 flex-1 flex-col justify-between">
+                    <div>
+                      <div className="flex items-start justify-between gap-2">
+                        <h3 className="line-clamp-1 font-serif text-[15px] font-bold leading-snug text-white">
+                          {name}
+                        </h3>
+                        <span className="inline-flex shrink-0 items-center gap-0.5 rounded-md bg-[#f2cb72]/14 px-1.5 py-0.5 text-xs font-extrabold text-[#f2cb72]">
+                          <Star size={11} className="fill-[#f2cb72] text-[#f2cb72]" />
+                          {getRating(restaurant).toFixed(1)}
+                        </span>
+                      </div>
+
+                      <div className="mt-1 flex flex-wrap items-center gap-1.5 text-[11px] text-white/55">
+                        <span className={`cuisine-tag !py-0 !px-1.5 !text-[10px] cuisine-${cuisineType}`}>
+                          {tc(cuisineType)}
+                        </span>
+                        <span className="rounded border border-white/12 bg-white/[0.05] px-1.5 py-0 text-[10px] text-white/75">
+                          {td(currentDish)}
+                        </span>
+                        {priceLevel && <span>{t(`price_level.${priceLevel}`)}</span>}
+                      </div>
+
+                      {summary && (
+                        <p className="mt-1.5 line-clamp-2 text-[11.5px] leading-relaxed text-[#cfc8bc]">
+                          {summary}
+                        </p>
+                      )}
+                    </div>
+
+                    <div className="mt-1.5 flex items-center justify-between gap-2 text-[11px] text-white/45">
+                      <span className="inline-flex min-w-0 items-center gap-1 truncate">
+                        {stationLabel ? (
+                          <>
+                            <TrainFront size={11} className="shrink-0 text-[#f2cb72]/80" />
+                            <span className="truncate">{stationLabel}</span>
+                          </>
+                        ) : (
+                          <>
+                            <MapPin size={11} className="shrink-0" />
+                            <span className="truncate">{restaurant.ward || restaurant.city}</span>
+                          </>
+                        )}
+                      </span>
+                      <span className="shrink-0">
+                        {restaurant.raw_review_count || restaurant.trusted_review_count || 0}
+                        {isZh ? "条评" : "件"}
+                      </span>
+                    </div>
                   </div>
                 </div>
-                
-                <div className="p-5">
-                  <div className="flex justify-between items-start mb-2">
-                    <h3 className="font-bold text-lg leading-tight" style={{ color: "var(--color-ink-900)" }}>
-                      {name}
-                    </h3>
-                    <div className="flex items-center gap-1 bg-warm-50 px-2 py-1 rounded-md" style={{ color: "var(--color-ink-900)" }}>
-                      <Star size={14} className="fill-gold-500 text-gold-500" style={{ color: "var(--color-gold-500)", fill: "var(--color-gold-500)" }} />
-                      <span className="font-bold text-sm">{getRating(restaurant).toFixed(1)}</span>
+
+                {/* ==================== 桌面端：精致 3 列大图卡 ==================== */}
+                <div className="hidden md:block">
+                  <div className="relative h-48 overflow-hidden bg-warm-100">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={photoUrl}
+                      alt={name}
+                      loading="lazy"
+                      className={`h-full w-full object-cover transition-transform duration-500 group-hover:scale-105 ${closedPermanently ? "grayscale" : ""}`}
+                    />
+                    <div className="absolute top-3 right-3 flex gap-2">
+                      {closedPermanently && (
+                        <span className="inline-flex items-center rounded-full border border-red-400/50 bg-black/80 px-2.5 py-0.5 font-serif text-xs font-bold text-red-300 backdrop-blur-md">
+                          {isZh ? "已停业" : "閉店"}
+                        </span>
+                      )}
+                      {closedTemporarily && (
+                        <span className="inline-flex items-center rounded-full border border-amber-400/50 bg-black/80 px-2.5 py-0.5 font-serif text-xs font-bold text-amber-200 backdrop-blur-md">
+                          {isZh ? "暂停营业" : "休業中"}
+                        </span>
+                      )}
+                      <span className={`badge-${authenticity}`}>{ta(authenticity)}</span>
+                    </div>
+                    <div className="absolute top-3 left-3">
+                      <FavoriteButton
+                        restaurantId={restaurant.id}
+                        initialFavorited={favoritedIds.has(restaurant.id)}
+                        isLoggedIn={isLoggedIn}
+                        locale={locale}
+                      />
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-3 text-xs mb-4" style={{ color: "var(--color-ink-400)" }}>
-                    <span className="flex items-center gap-1"><MapPin size={12} /> {restaurant.ward || restaurant.city}</span>
-                    <span className={`cuisine-tag cuisine-${cuisineType}`}>{tc(cuisineType)}</span>
-                    {priceLevel && <span>{t(`price_level.${priceLevel}`)}</span>}
-                  </div>
-
-                  {summary && (
-                    <div className="ai-summary-card text-sm leading-snug" style={{ color: "var(--color-ink-700)" }}>
-                      {summary}
+                  <div className="p-5">
+                    <div className="mb-2 flex items-start justify-between gap-2">
+                      <h3 className="font-serif text-lg font-bold leading-tight text-ink-900 group-hover:text-gold-300 transition-colors">
+                        {name}
+                      </h3>
+                      <div className="flex shrink-0 items-center gap-1 rounded-md bg-warm-50 px-2 py-1 text-ink-900">
+                        <Star
+                          size={14}
+                          className="fill-gold-500 text-gold-500"
+                          style={{ color: "var(--color-gold-500)", fill: "var(--color-gold-500)" }}
+                        />
+                        <span className="text-sm font-bold">{getRating(restaurant).toFixed(1)}</span>
+                      </div>
                     </div>
-                  )}
-                  
-                  <div className="mt-4 text-xs flex justify-between items-center" style={{ color: "var(--color-ink-400)" }}>
-                    <span>{restaurant.trusted_review_count || 0} {t("trusted_reviews")}</span>
-                    <span>Google: {(restaurant.raw_rating || 0).toFixed(1)}</span>
+
+                    <div className="mb-3 flex flex-wrap items-center gap-2 text-xs text-ink-400">
+                      <span className="inline-flex items-center gap-1">
+                        {stationLabel ? (
+                          <>
+                            <TrainFront size={12} className="text-gold-300" />
+                            <span>{stationLabel}</span>
+                          </>
+                        ) : (
+                          <>
+                            <MapPin size={12} />
+                            <span>{restaurant.ward || restaurant.city}</span>
+                          </>
+                        )}
+                      </span>
+                      <span className={`cuisine-tag cuisine-${cuisineType}`}>{tc(cuisineType)}</span>
+                      <span className="rounded border border-white/12 bg-white/[0.04] px-1.5 py-0.5 text-[11px] font-medium text-white/75">
+                        {td(currentDish)}
+                      </span>
+                      {priceLevel && <span>{t(`price_level.${priceLevel}`)}</span>}
+                    </div>
+
+                    {summary && (
+                      <div className="ai-summary-card text-sm leading-snug text-ink-700">
+                        {summary}
+                      </div>
+                    )}
+
+                    <div className="mt-4 flex items-center justify-between text-xs text-ink-400">
+                      <span>
+                        {restaurant.trusted_review_count || 0} {t("trusted_reviews")}
+                      </span>
+                      <span>Google: {(restaurant.raw_rating || 0).toFixed(1)}</span>
+                    </div>
                   </div>
                 </div>
               </Link>

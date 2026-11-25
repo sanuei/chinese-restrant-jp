@@ -111,20 +111,20 @@ export default async function HeroSection({ locale, counts, showcaseRestaurants 
   });
 
   return (
-    <section className="hero-showcase pt-14 pb-16 sm:pt-20 sm:pb-20">
+    <section className="hero-showcase pt-8 pb-12 sm:pt-20 sm:pb-20">
       <div className="hero-showcase-glow" aria-hidden />
       <div className="hero-showcase-dots" aria-hidden />
 
       {/* 顶部居中标题 + 副标题 + 发光胶囊 CTA */}
       <div className="relative mx-auto max-w-4xl px-4 text-center sm:px-6">
-        <h1 className="font-serif text-4xl font-bold leading-[1.15] tracking-tight text-white sm:text-5xl lg:text-[3.55rem]">
-          <span className="block">{copy.titleLine1}</span>
-          <span className="mt-1 block bg-gradient-to-b from-white via-warm-50 to-gold-300 bg-clip-text text-transparent">
+        <h1 className="font-serif text-4xl font-bold leading-[1.16] tracking-tight text-white sm:text-5xl lg:text-[3.55rem]">
+          <span className="block text-white drop-shadow-[0_2px_12px_rgba(0,0,0,0.45)]">{copy.titleLine1}</span>
+          <span className="mt-1.5 block bg-gradient-to-b from-[#FFFDF7] via-[#F9E3A6] to-[#E5AF4B] bg-clip-text text-transparent drop-shadow-[0_4px_22px_rgba(242,203,114,0.32)]">
             {copy.titleLine2}
           </span>
         </h1>
 
-        <p className="mx-auto mt-5 max-w-xl text-sm leading-relaxed text-white/55 sm:text-base">
+        <p className="mx-auto mt-5 max-w-xl text-sm leading-relaxed text-white/75 sm:text-base">
           <span className="block">{copy.subtitleLine1}</span>
           <span className="block">{copy.subtitleLine2}</span>
         </p>

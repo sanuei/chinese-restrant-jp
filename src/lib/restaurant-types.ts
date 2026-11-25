@@ -14,19 +14,27 @@ export const authenticityTypes = ["authentic", "adapted", "japanese", "unknown"]
 
 // 品类：经营业态，和菜系（地域风味）是平行的第二套分类，一店一个
 export const dishTypes = [
+  "deli",
+  "grocery",
   "hotpot",
-  "bbq",
-  "noodles",
   "malatang",
+  "bbq",
+  "stirfry",
+  "noodles",
+  "stewpot",
   "dumpling",
   "riceNoodle",
   "grilledFish",
   "dimsum",
   "breakfast",
-  "deli",
-  "grocery",
+  "dessert",
+  "finedining",
+  "machichuka",
   "other",
 ] as const;
+
+/** 需要重点高亮展示的在日华人特色必逛品类 */
+export const FEATURED_DISH_TYPES = ["deli", "grocery"] as const;
 
 export type CuisineType = (typeof cuisineTypes)[number];
 export type Authenticity = (typeof authenticityTypes)[number];

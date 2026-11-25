@@ -3,6 +3,8 @@ import CuisineGrid from "@/components/CuisineGrid";
 import DishTypeGrid from "@/components/DishTypeGrid";
 import { getDb } from "@/lib/cloudflare";
 
+export const dynamic = "force-dynamic";
+
 type Props = { params: Promise<{ locale: string }> };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {

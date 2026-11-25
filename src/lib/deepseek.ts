@@ -185,7 +185,7 @@ export interface RestaurantAiAnalysisResult {
   name_zh?: string;
   cuisine_type: "sichuan" | "cantonese" | "northern" | "fujian" | "hunan" | "jiangsu" | "northwest" | "yunnan" | "other";
   cuisine_confidence: number;
-  dish_type: "hotpot" | "bbq" | "noodles" | "malatang" | "dumpling" | "riceNoodle" | "grilledFish" | "dimsum" | "breakfast" | "deli" | "grocery" | "other";
+  dish_type: "deli" | "grocery" | "hotpot" | "malatang" | "bbq" | "stirfry" | "noodles" | "stewpot" | "dumpling" | "riceNoodle" | "grilledFish" | "dimsum" | "breakfast" | "dessert" | "finedining" | "machichuka" | "other";
   authenticity: "authentic" | "adapted" | "japanese" | "unknown";
   authenticity_score: number;
   authenticity_reason_zh: string;
@@ -222,9 +222,8 @@ export async function analyzeRestaurantSnapshot(input: {
 sichuan(川菜), cantonese(粤菜), northern(北方菜), fujian(闽菜), hunan(湘菜), jiangsu(苏浙菜), northwest(西北菜), yunnan(云贵菜), other(综合/其他)。
 
 品类 dish_type 是和菜系平行的另一个维度，描述这家店的经营业态/上菜形式，只能是以下之一：
-hotpot(火锅), bbq(烧烤), noodles(拉面/面食为主), malatang(麻辣烫/冒菜), dumpling(饺子/包子为主), riceNoodle(米线/米粉为主), grilledFish(烤鱼), dimsum(点心/茶餐厅), breakfast(中式早餐/豆浆油条/煎饼果子/豆腐脑/胡辣汤/朝粥), deli(熟食卤味/鸭脖/凉菜/烧腊外带专门店), grocery(中华物产店/中国食材超市/中国食品店), other(综合正餐，不属于以上任何一种业态)。
-判断依据主要看店名和菜品结构（例如店名带"火锅""合桌"、或评论反复提到锅底涮菜，判 hotpot；店名带"烧烤""烤肉""串"，判 bbq；主要卖拉面/刀削面/炸酱面等面食，判 noodles；卖麻辣烫、冒菜等自选称重小吃，判 malatang；主打水饺、生煎、包子，判 dumpling；主打云南/广西风味米线米粉，判 riceNoodle；主打烤鱼，判 grilledFish；粤式茶餐厅、点心为主，判 dimsum；主打中式早餐、豆浆油条、煎饼果子、豆腐脑、胡辣汤、咸豆浆、朝粥、台式蛋饼饭团等早点的判 breakfast；主打卤味、鸭脖、猪蹄、凉菜、中式熟食、烧腊外带的判 deli；卖中国调料、零食、冷冻食品的中华物产店/中国超市判 grocery；普通中餐馆、菜品综合没有明显单一业态特征，判 other）。
-注意：正宗的中式早餐店、卤味熟食店、中国物产店/中国食材超市，正宗度应判为 authentic，不要误判为 japanese。
+deli(熟食卤味/鸭脖/凉菜/烧腊外带专门店), grocery(中华物产店/中国食材超市/中国食品店), hotpot(火锅/串串香), malatang(麻辣烫/冒菜), bbq(烧烤/羊肉串/东北烤肉), stirfry(地方家常炒菜/川湘东北新疆等热炒馆), noodles(拉面/刀削面/炸酱面/牛肉面等面食为主), stewpot(铁锅炖/酸菜鱼/水煮鱼/大盘鸡/干锅炖菜), dumpling(饺子/包子/生煎为主), riceNoodle(米线/米粉/螺蛳粉), grilledFish(烤鱼/小龙虾), dimsum(点心/茶餐厅/早茶), breakfast(中式早餐/豆浆油条/煎饼果子/豆腐脑/胡辣汤/朝粥), dessert(甜品/糖水/珍珠奶茶/台式小吃), finedining(高档中餐/米其林/创意私房菜/宴请コース), machichuka(日式町中华/平价中华定食), other(其他无法归类的综合中餐)。
+尽量细分到上述具体业态，减少使用 other。注意：正宗的中式早餐店、卤味熟食店、中国物产店/中国食材超市，正宗度应判为 authentic，不要误判为 japanese。
 
 正宗度 authenticity 只能是：
 authentic(正宗中国味), adapted(改良中国味), japanese(日式中华), unknown(无法确定)。

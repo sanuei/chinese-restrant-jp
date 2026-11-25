@@ -8,6 +8,7 @@ import {
   ExternalLink,
   Globe,
   MapPin,
+  MessageSquare,
   Navigation,
   Phone,
   Sparkles,
@@ -409,6 +410,40 @@ export default async function LifePlaceDetailPage({ params }: Props) {
           </div>
         </section>
       )}
+
+      {/* 移动端美团风吸底操作栏：电话 / 写评价 / 一键导航 */}
+      <div
+        className="fixed inset-x-0 bottom-0 z-50 border-t border-white/12 bg-[#0b0a10]/95 px-4 py-2.5 backdrop-blur-xl md:hidden"
+        style={{ paddingBottom: "calc(0.625rem + env(safe-area-inset-bottom))" }}
+      >
+        <div className="flex items-center gap-2.5">
+          {place.phone && (
+            <a
+              href={`tel:${place.phone}`}
+              className="inline-flex h-10 items-center gap-1 rounded-full border border-white/15 bg-white/[0.05] px-3 text-xs font-semibold text-white/85"
+            >
+              <Phone size={14} className="text-[#f2cb72]" />
+              <span>{isZh ? "电话" : "電話"}</span>
+            </a>
+          )}
+          <a
+            href="#community"
+            className="inline-flex h-10 items-center gap-1 rounded-full border border-white/15 bg-white/[0.05] px-3 text-xs font-semibold text-white/85"
+          >
+            <MessageSquare size={14} className="text-[#f2cb72]" />
+            <span>{isZh ? "评一评" : "評価"}</span>
+          </a>
+          <a
+            href={mapsUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="btn-primary flex h-10.5 flex-1 items-center justify-center gap-1.5 rounded-full text-sm font-bold"
+          >
+            <Navigation size={15} />
+            <span>{isZh ? "去这里 · 地图导航" : "ここへ行く · ナビ"}</span>
+          </a>
+        </div>
+      </div>
     </div>
   );
 }

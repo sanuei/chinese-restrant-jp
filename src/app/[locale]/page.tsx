@@ -1,6 +1,7 @@
 import { getTranslations } from "next-intl/server";
 import type { Metadata } from "next";
 import HeroSection, { type HeroShowcaseRestaurant } from "@/components/HeroSection";
+import MobileHomeHub from "@/components/MobileHomeHub";
 import TopRestaurants from "@/components/TopRestaurants";
 import TrendingRanking from "@/components/TrendingRanking";
 import HomeDiscovery from "@/components/HomeDiscovery";
@@ -220,6 +221,7 @@ export default async function HomePage({ params, searchParams }: Props) {
   return (
     <>
       <JsonLd data={buildOrganizationJsonLd(locale)} />
+      <MobileHomeHub locale={locale} />
       <HeroSection locale={locale} counts={cuisineCounts} showcaseRestaurants={heroShowcase} />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <HomeDiscovery

@@ -6,6 +6,7 @@ import { routing } from "@/i18n/routing";
 import { getCurrentUser } from "@/lib/session";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
+import MobileTabBar from "@/components/MobileTabBar";
 import { isAdminEmail } from "@/lib/admin-auth";
 
 type Props = {
@@ -73,6 +74,7 @@ export default async function LocaleLayout({ children, params }: Props) {
         <Navbar locale={locale} user={user} />
         <main className="min-h-screen">{children}</main>
         <Footer locale={locale} />
+        <MobileTabBar locale={locale} />
       </div>
     </NextIntlClientProvider>
   );

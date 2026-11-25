@@ -8,7 +8,7 @@ export default function Footer({ locale }: Props) {
   const t = useTranslations("footer");
   
   return (
-    <footer className="mt-14 border-t border-white/10 bg-[#050507] py-10">
+    <footer className="mt-14 border-t border-white/10 bg-[#050507] pt-10 pb-24 md:py-10">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex flex-col md:flex-row justify-between items-center gap-6">
           <div className="flex flex-col items-center md:items-start gap-2">
