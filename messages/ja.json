@@ -22,6 +22,8 @@
     "tab_stations": "駅から",
     "station_count": "{count}件",
     "section_top": "東京の人気店",
+    "section_top_hint": "高評価のガチ中華から1時間ごとにローテーション表示",
+    "shuffle_batch": "入れ替える",
     "section_new": "最新掲載",
     "section_trending": "今週の人気ランキング",
     "section_trending_hint": "直近7日間の閲覧数によるランキング（5分ごとに更新）",

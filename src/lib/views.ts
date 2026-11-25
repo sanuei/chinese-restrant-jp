@@ -1,6 +1,7 @@
 import { headers } from "next/headers";
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { getCache, getDb } from "@/lib/cloudflare";
+import { getHourlyRotationSeed, rotateRestaurantsByTier } from "@/lib/restaurant-rotation";
 import type { RestaurantRow } from "@/lib/restaurant-types";
 
 /** 排行榜统计窗口：最近 7 天，让榜单能反映「最近在热」而不是历史总量 */
@@ -89,10 +90,12 @@ async function queryTrending(limit: number): Promise<TrendingRestaurant[]> {
   const ranked = results || [];
   if (ranked.length >= limit) return ranked;
 
-  // 冷启动兜底：统计数据还不够时用高分店补齐，避免榜单空着或只有两三张卡
+  // 冷启动兜底：统计数据还不够时从高分池按小时轮换补齐，避免榜单空着且不与口碑区重复撞脸
   const seen = ranked.map((row) => row.id);
   const placeholders = seen.length ? `AND r.id NOT IN (${seen.map(() => "?").join(",")})` : "";
-  const { results: filler = [] } = await db
+  const needed = limit - ranked.length;
+  const poolLimit = Math.max(needed * 4, 48);
+  const { results: fillerPool = [] } = await db
     .prepare(
       `SELECT ${TRENDING_COLUMNS}, 0 AS view_count
        FROM restaurants r
@@ -100,10 +103,17 @@ async function queryTrending(limit: number): Promise<TrendingRestaurant[]> {
        ORDER BY r.trusted_rating DESC, r.raw_review_count DESC
        LIMIT ?`
     )
-    .bind(...seen, limit - ranked.length)
+    .bind(...seen, poolLimit)
     .all<TrendingRestaurant>();
 
-  return [...ranked, ...(filler || [])];
+  // 与首页口碑推荐错开不同种子偏移，避免两排同时出现同一批店
+  const rotatedFiller = rotateRestaurantsByTier(
+    fillerPool || [],
+    getHourlyRotationSeed() + 31337,
+    { tierSize: poolLimit, diversifyCuisine: true }
+  );
+
+  return [...ranked, ...rotatedFiller.slice(0, needed)];
 }
 
 /**

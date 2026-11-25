@@ -14,12 +14,19 @@ export const dynamic = "force-dynamic";
 
 type Props = {
   params: Promise<{ locale: string }>;
-  searchParams: Promise<{ topPage?: string | string[] }>;
+  searchParams: Promise<{ topPage?: string | string[]; topSeed?: string | string[] }>;
 };
 
 function parsePage(value: string | string[] | undefined): number {
   const parsed = Number.parseInt(Array.isArray(value) ? value[0] : value || "1", 10);
   return Number.isFinite(parsed) && parsed > 0 ? parsed : 1;
+}
+
+function parseSeed(value: string | string[] | undefined): number | null {
+  const raw = Array.isArray(value) ? value[0] : value;
+  if (!raw) return null;
+  const parsed = Number.parseInt(raw, 10);
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : null;
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -113,6 +120,7 @@ export default async function HomePage({ params, searchParams }: Props) {
   const { locale } = await params;
   const query = await searchParams;
   const topPage = parsePage(query.topPage);
+  const topSeed = parseSeed(query.topSeed);
   const t = await getTranslations({ locale, namespace: "home" });
   const [cuisineCounts, dishTypeCounts, stationAreaCounts] = await Promise.all([
     getCuisineCounts(),
@@ -142,6 +150,7 @@ export default async function HomePage({ params, searchParams }: Props) {
           page={topPage}
           paginated
           sortMode="top"
+          rotationSeed={topSeed}
         />
         <div className="divider-chinese" />
         <TopRestaurants locale={locale} title={t("section_new")} limit={6} sortMode="new" />

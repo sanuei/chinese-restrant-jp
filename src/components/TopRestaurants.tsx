@@ -3,8 +3,9 @@ import { getCurrentUser } from "@/lib/session";
 import { getFavoritedIds } from "@/lib/favorites";
 import { getTranslations } from "next-intl/server";
 import Link from "next/link";
-import { ChevronLeft, ChevronRight, Star, MapPin } from "lucide-react";
+import { ChevronLeft, ChevronRight, RefreshCw, Star, MapPin } from "lucide-react";
 import FavoriteButton from "@/components/FavoriteButton";
+import { getHourlyRotationSeed, rotateRestaurantsByTier } from "@/lib/restaurant-rotation";
 import {
   getRating,
   getRestaurantName,
@@ -27,7 +28,20 @@ type Props = {
   page?: number;
   paginated?: boolean;
   sortMode?: SortMode;
+  rotationSeed?: number | null;
 };
+
+const CARD_COLUMNS = `id, name_zh, name_ja, name_original, address, city, ward, price_level,
+  cuisine_type, authenticity, raw_rating, trusted_rating, raw_review_count, trusted_review_count,
+  ai_summary_zh, ai_summary_ja, photos, nearest_station, nearest_station_zh, station_distance_m`;
+
+function buildTopHref(locale: string, page: number, seed: number | null | undefined): string {
+  const params = new URLSearchParams();
+  if (page > 1) params.set("topPage", String(page));
+  if (typeof seed === "number") params.set("topSeed", String(seed));
+  const qs = params.toString();
+  return `/${locale}${qs ? `?${qs}` : ""}#top-restaurants`;
+}
 
 export default async function TopRestaurants({
   locale,
@@ -36,39 +50,62 @@ export default async function TopRestaurants({
   page = 1,
   paginated = false,
   sortMode = "top",
+  rotationSeed = null,
 }: Props) {
   const tc = await getTranslations({ locale, namespace: "cuisine" });
   const ta = await getTranslations({ locale, namespace: "auth_badge" });
   const tr = await getTranslations({ locale, namespace: "restaurant" });
   const th = await getTranslations({ locale, namespace: "home" });
 
-  const orderByClause = sortMode === "new"
-    ? "last_synced_at DESC, updated_at DESC, trusted_rating DESC"
-    : "trusted_rating DESC, raw_review_count DESC";
-
   const db = await getDb();
   let restaurants: RestaurantRow[] = [];
   let currentPage = Math.max(1, page);
   let totalPages = 1;
+  const effectiveSeed = sortMode === "top"
+    ? (typeof rotationSeed === "number" ? rotationSeed : getHourlyRotationSeed())
+    : null;
 
   try {
-    if (paginated) {
-      const total = await db.prepare(
-        `SELECT COUNT(*) AS count
-         FROM restaurants
-         WHERE is_active = 1 AND authenticity = 'authentic'`
-      ).first<{ count: number }>();
-      totalPages = Math.max(1, Math.ceil((total?.count || 0) / limit));
-      currentPage = Math.min(currentPage, totalPages);
-    }
+    if (sortMode === "top") {
+      // 拉取所有在架正宗餐厅（仅取卡片展示列），按高分梯队每小时轮换 + 菜系打散，
+      // 保证第一页始终都是高口碑尖子生，同时不再永远固定展示那几家店
+      const { results = [] } = await db.prepare(
+        `SELECT ${CARD_COLUMNS} FROM restaurants
+         WHERE is_active = 1 AND authenticity = 'authentic'
+         ORDER BY trusted_rating DESC, raw_review_count DESC`
+      ).all<RestaurantRow>();
 
-    const { results = [] } = await db.prepare(
-      `SELECT * FROM restaurants
-       WHERE is_active = 1 AND authenticity = 'authentic'
-       ORDER BY ${orderByClause}
-       LIMIT ? OFFSET ?`
-    ).bind(limit, paginated ? (currentPage - 1) * limit : 0).all<RestaurantRow>();
-    restaurants = results || [];
+      const rotated = rotateRestaurantsByTier(results || [], effectiveSeed!, {
+        tierSize: 36,
+        diversifyCuisine: true,
+      });
+
+      if (paginated) {
+        totalPages = Math.max(1, Math.ceil(rotated.length / limit));
+        currentPage = Math.min(currentPage, totalPages);
+      }
+
+      const offset = paginated ? (currentPage - 1) * limit : 0;
+      restaurants = rotated.slice(offset, offset + limit);
+    } else {
+      if (paginated) {
+        const total = await db.prepare(
+          `SELECT COUNT(*) AS count
+           FROM restaurants
+           WHERE is_active = 1 AND authenticity = 'authentic'`
+        ).first<{ count: number }>();
+        totalPages = Math.max(1, Math.ceil((total?.count || 0) / limit));
+        currentPage = Math.min(currentPage, totalPages);
+      }
+
+      const { results = [] } = await db.prepare(
+        `SELECT ${CARD_COLUMNS} FROM restaurants
+         WHERE is_active = 1 AND authenticity = 'authentic'
+         ORDER BY last_synced_at DESC, updated_at DESC, trusted_rating DESC
+         LIMIT ? OFFSET ?`
+      ).bind(limit, paginated ? (currentPage - 1) * limit : 0).all<RestaurantRow>();
+      restaurants = results || [];
+    }
   } catch (error) {
     console.error("Database query error:", error);
   }
@@ -90,13 +127,29 @@ export default async function TopRestaurants({
 
   return (
     <section id={paginated ? "top-restaurants" : undefined} className="py-8 scroll-mt-20">
-      <div className="flex items-center justify-between mb-5">
-        <h2 className="font-serif font-bold text-2xl sm:text-3xl text-ink-900">
-          {title}
-        </h2>
-        <Link href={`/${locale}/restaurants`} className="text-sm font-medium hover:underline text-vermilion-700">
-          {th("see_all")}
-        </Link>
+      <div className="flex flex-wrap items-end justify-between gap-3 mb-5">
+        <div>
+          <h2 className="font-serif font-bold text-2xl sm:text-3xl text-ink-900">
+            {title}
+          </h2>
+          {sortMode === "top" && (
+            <p className="text-sm text-ink-400 mt-1">{th("section_top_hint")}</p>
+          )}
+        </div>
+        <div className="flex items-center gap-4">
+          {sortMode === "top" && effectiveSeed !== null && (
+            <Link
+              href={buildTopHref(locale, 1, effectiveSeed + 1)}
+              className="inline-flex items-center gap-1.5 rounded-full border border-warm-200 bg-white px-3 py-1.5 text-xs font-medium text-ink-700 transition-colors hover:border-vermilion-300 hover:text-vermilion-700"
+            >
+              <RefreshCw size={13} />
+              {th("shuffle_batch")}
+            </Link>
+          )}
+          <Link href={`/${locale}/restaurants`} className="text-sm font-medium hover:underline text-vermilion-700">
+            {th("see_all")}
+          </Link>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -181,7 +234,7 @@ export default async function TopRestaurants({
         <nav className="mt-8 flex items-center justify-center gap-3" aria-label={th("pagination_label")}>
           {currentPage > 1 ? (
             <Link
-              href={`/${locale}?topPage=${currentPage - 1}#top-restaurants`}
+              href={buildTopHref(locale, currentPage - 1, rotationSeed)}
               className="inline-flex items-center gap-1 rounded-lg border border-warm-200 bg-white px-4 py-2 text-sm font-medium text-ink-700 transition-colors hover:border-vermilion-300 hover:text-vermilion-700"
             >
               <ChevronLeft size={16} />
@@ -200,7 +253,7 @@ export default async function TopRestaurants({
 
           {currentPage < totalPages ? (
             <Link
-              href={`/${locale}?topPage=${currentPage + 1}#top-restaurants`}
+              href={buildTopHref(locale, currentPage + 1, rotationSeed)}
               className="inline-flex items-center gap-1 rounded-lg border border-warm-200 bg-white px-4 py-2 text-sm font-medium text-ink-700 transition-colors hover:border-vermilion-300 hover:text-vermilion-700"
             >
               {th("next_page")}

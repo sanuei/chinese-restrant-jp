@@ -22,6 +22,8 @@
     "tab_stations": "按车站",
     "station_count": "{count} 家餐厅",
     "section_top": "东京口碑推荐",
+    "section_top_hint": "从高口碑正宗餐厅中每小时自动轮换展示",
+    "shuffle_batch": "换一批",
     "section_new": "最新收录",
     "section_trending": "本周热门榜",
     "section_trending_hint": "根据最近 7 天的浏览热度排名，每 5 分钟更新",
