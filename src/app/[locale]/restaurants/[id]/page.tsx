@@ -1,12 +1,14 @@
 import { getDb } from "@/lib/cloudflare";
 import { getCurrentUser } from "@/lib/session";
 import { getFavoritedIds } from "@/lib/favorites";
+import { getRestaurantCommunity } from "@/lib/community";
 import { recordRestaurantView } from "@/lib/views";
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import { notFound } from "next/navigation";
 import { Star, MapPin, Phone, Globe, ShieldCheck, ShieldAlert, MapPinned, TrainFront, AlertTriangle } from "lucide-react";
 import RatingExplainer from "@/components/RatingExplainer";
+import RestaurantCommunity from "@/components/RestaurantCommunity";
 import FavoriteButton from "@/components/FavoriteButton";
 import ShareButton from "@/components/ShareButton";
 import JsonLd from "@/components/JsonLd";
@@ -124,8 +126,12 @@ export default async function RestaurantDetailPage({ params }: Props) {
   // 经由 /api/photo 代理（R2 缓存），不再每次展示都直连 Google 计费
   const photos = rawPhotos.map((ref) => photoSrc(ref, 800));
 
-  const isLoggedIn = Boolean(await getCurrentUser());
-  const favoritedIds = await getFavoritedIds([restaurant.id]);
+  const currentUser = await getCurrentUser();
+  const isLoggedIn = Boolean(currentUser);
+  const [favoritedIds, community] = await Promise.all([
+    getFavoritedIds([restaurant.id]),
+    getRestaurantCommunity(restaurant.id, currentUser),
+  ]);
 
   const breadcrumbJsonLd = buildBreadcrumbJsonLd([
     { name: locale === "zh" ? "首页" : "ホーム", url: `/${locale}` },
@@ -283,9 +289,23 @@ export default async function RestaurantDetailPage({ params }: Props) {
             </div>
           </section>
 
-          {/* 真实评论列表 */}
+          {/* 食客打分、留言与楼中楼讨论区（免审核即时发布 + 自动垃圾过滤） */}
+          <RestaurantCommunity
+            restaurantId={restaurant.id}
+            locale={locale}
+            isLoggedIn={isLoggedIn}
+            initialRating={community.ratingSummary}
+            initialComments={community.comments}
+            initialTotalComments={community.totalComments}
+          />
+
+          <div className="divider-chinese" />
+
+          {/* Google 真实评论列表 */}
           <section>
-            <h2 className="font-serif font-bold text-2xl mb-6 text-ink-900">大家都在说</h2>
+            <h2 className="font-serif font-bold text-2xl mb-6 text-ink-900">
+              {isZh ? "Google 精选评论" : "Google 厳選レビュー"}
+            </h2>
             <div className="flex flex-col gap-6">
               {reviews.length > 0 ? reviews.map((review) => (
                 <div key={review.id} className="p-5 border border-warm-200 bg-white rounded-xl shadow-sm">
