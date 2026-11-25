@@ -17,7 +17,7 @@ export function DishTypeCardGrid({ locale, counts }: Props) {
   const td = useTranslations("dish_type");
 
   return (
-    <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 lg:grid-cols-9 lg:gap-3">
+    <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 lg:grid-cols-6 lg:gap-3">
       {dishTypes.map((key) => {
         const Icon = DISH_TYPE_ICONS[key];
         return (

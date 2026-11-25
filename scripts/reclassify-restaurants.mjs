@@ -40,7 +40,7 @@ const API_BASE = (process.env.DEEPSEEK_API_BASE || "https://api.deepseek.com").r
 const MODEL = process.env.DEEPSEEK_MODEL || "deepseek-flash";
 
 const CUISINES = ["sichuan", "cantonese", "northern", "fujian", "hunan", "jiangsu", "northwest", "yunnan", "other"];
-const DISHES = ["hotpot", "bbq", "noodles", "malatang", "dumpling", "riceNoodle", "grilledFish", "dimsum", "other"];
+const DISHES = ["hotpot", "bbq", "noodles", "malatang", "dumpling", "riceNoodle", "grilledFish", "dimsum", "deli", "grocery", "other"];
 const AUTHS = ["authentic", "adapted", "japanese", "unknown"];
 
 // 如果 dish_type='other' 但店名或摘要出现这些词，说明大概率有更精确的业态分类

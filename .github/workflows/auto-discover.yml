@@ -14,7 +14,7 @@ on:
         default: "15"
         type: string
       rotation_index:
-        description: "指定轮换组编号（0-5，留空则按当前周数自动轮换）"
+        description: "指定轮换组编号（0-6，留空则按当前周数自动轮换；6=熟食卤味与中华物产店）"
         required: false
         default: ""
         type: string

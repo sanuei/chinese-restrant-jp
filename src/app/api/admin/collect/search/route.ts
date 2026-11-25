@@ -43,8 +43,19 @@ const DEFAULT_KEYWORDS = [
   "湖南料理", "湘菜", "四川料理", "川菜", "重慶火鍋", "麻辣湯", "中国火鍋",
   "中国東北料理", "東北菜", "延辺料理", "新疆料理", "蘭州牛肉麺", "雲南料理",
   "広東料理", "茶餐廳", "飲茶", "福建料理", "上海料理", "烤魚", "東北鉄鍋燉", "螺螄粉",
+  "中華惣菜", "鴨脖 滷味", "中華物産店", "中国物産",
   "本格中華", "ガチ中華",
 ];
+
+// 搜索中华物产店或外带熟食卤味时，Google 上这类门店的 type 往往是 store/grocery/food 而非 restaurant，
+// 强传 type=restaurant 会把绝大多数物产店和熟食店过滤掉，因此遇到这些关键词自动放开 type 限制
+const NON_RESTAURANT_TYPE_HINTS = [
+  "物産", "物产", "超市", "食品", "食材", "商店", "熟食", "卤味", "滷味", "鸭脖", "鴨脖", "惣菜", "焼臘", "烧腊",
+];
+
+function shouldRestrictRestaurantType(query: string): boolean {
+  return !NON_RESTAURANT_TYPE_HINTS.some((hint) => query.includes(hint));
+}
 
 const KANTO_PATTERNS = ["東京都", "神奈川県", "埼玉県", "千葉県", "茨城県", "栃木県", "群馬県"];
 
@@ -81,7 +92,9 @@ async function searchGoogle(query: string): Promise<GoogleTextSearchResult[]> {
 
   const url = new URL("https://maps.googleapis.com/maps/api/place/textsearch/json");
   url.searchParams.set("query", query);
-  url.searchParams.set("type", "restaurant");
+  if (shouldRestrictRestaurantType(query)) {
+    url.searchParams.set("type", "restaurant");
+  }
   url.searchParams.set("language", "ja");
   url.searchParams.set("region", "jp");
   url.searchParams.set("key", apiKey);
