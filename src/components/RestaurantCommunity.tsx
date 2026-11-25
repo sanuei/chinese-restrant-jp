@@ -22,6 +22,10 @@ type Props = {
   initialRating: RatingSummary;
   initialComments: CommunityComment[];
   initialTotalComments: number;
+  /** 可选自定义接口前缀，默认 /api/restaurants/[id]，生活专区传入 /api/life/[id] */
+  apiBasePath?: string;
+  /** 业务场景：餐厅或生活服务，用于微调引导文案 */
+  subjectType?: "restaurant" | "life";
 };
 
 function formatTime(isoLike: string, isZh: boolean): string {
@@ -56,8 +60,12 @@ export default function RestaurantCommunity({
   initialRating,
   initialComments,
   initialTotalComments,
+  apiBasePath,
+  subjectType = "restaurant",
 }: Props) {
   const isZh = locale === "zh";
+  const isLife = subjectType === "life";
+  const apiBase = apiBasePath || `/api/restaurants/${encodeURIComponent(restaurantId)}`;
 
   const [ratingSummary, setRatingSummary] = useState<RatingSummary>(initialRating);
   const [comments, setComments] = useState<CommunityComment[]>(initialComments);
@@ -82,14 +90,18 @@ export default function RestaurantCommunity({
   const [replyError, setReplyError] = useState<string | null>(null);
 
   const starLabels = isZh
-    ? ["", "踩雷不推荐", "一般般", "还不错", "很好吃", "强烈推荐"]
-    : ["", "おすすめしない", "いまひとつ", "まあまあ", "おいしい", "超おすすめ"];
+    ? isLife
+      ? ["", "踩雷不推荐", "一般般", "还不错", "体验很好", "强烈推荐"]
+      : ["", "踩雷不推荐", "一般般", "还不错", "很好吃", "强烈推荐"]
+    : isLife
+      ? ["", "おすすめしない", "いまひとつ", "まあまあ", "満足", "超おすすめ"]
+      : ["", "おすすめしない", "いまひとつ", "まあまあ", "おいしい", "超おすすめ"];
 
   const copy = isZh
     ? {
-        sectionTitle: "食客打分与讨论",
-        ratingTitle: "本站食客评分",
-        noRatingYet: "暂无打分，来做第一位打分食客吧",
+        sectionTitle: isLife ? "用户打分与体验讨论" : "食客打分与讨论",
+        ratingTitle: isLife ? "本站用户评分" : "本站食客评分",
+        noRatingYet: isLife ? "暂无打分，来做第一位评分用户吧" : "暂无打分，来做第一位打分食客吧",
         ratingCount: (n: number) => `${n} 人已打分`,
         ratePrompt: "点击星星为这家店打分",
         ratedPrefix: "我的评分",
@@ -97,13 +109,17 @@ export default function RestaurantCommunity({
         composerTitle: "发表留言 / 发起讨论",
         attachRating: "附带打分（可选）",
         clearRating: "仅留言不打分",
-        placeholder: "分享真实口味、推荐菜品、避坑提醒，或向去过的朋友提问（如是否需要预约、辣度如何）...",
+        placeholder: isLife
+          ? "分享真实体验、中文沟通是否顺畅、价格是否透明，或向去过的朋友提问（如是否需要提前预约）..."
+          : "分享真实口味、推荐菜品、避坑提醒，或向去过的朋友提问（如是否需要预约、辣度如何）...",
         spamHint: "无需审核即时展示 · 系统自动过滤外链/广告/刷屏垃圾留言",
         submitBtn: "发布留言",
         submittingBtn: "发布中...",
         loginBanner: "使用 Google 账号登录后，即可打分、发表真实体验或参与讨论。",
         loginBtn: "立即登录",
-        emptyList: "还没有食客留言，欢迎留下第一条真实评价或提问！",
+        emptyList: isLife
+          ? "还没有用户留言，欢迎留下第一条真实体验或提问！"
+          : "还没有食客留言，欢迎留下第一条真实评价或提问！",
         replyBtn: "回复",
         replyPlaceholder: (name: string) => `回复 @${name}...`,
         replySend: "发送回复",
@@ -152,7 +168,7 @@ export default function RestaurantCommunity({
     setRatingSaving(true);
     setRatingNotice(null);
     try {
-      const res = await fetch(`/api/restaurants/${encodeURIComponent(restaurantId)}/rating`, {
+      const res = await fetch(`${apiBase}/rating`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ rating: star }),
@@ -183,7 +199,7 @@ export default function RestaurantCommunity({
     setSubmitting(true);
     setErrorMsg(null);
     try {
-      const res = await fetch(`/api/restaurants/${encodeURIComponent(restaurantId)}/comments`, {
+      const res = await fetch(`${apiBase}/comments`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -226,7 +242,7 @@ export default function RestaurantCommunity({
     setReplySubmitting(true);
     setReplyError(null);
     try {
-      const res = await fetch(`/api/restaurants/${encodeURIComponent(restaurantId)}/comments`, {
+      const res = await fetch(`${apiBase}/comments`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -279,7 +295,7 @@ export default function RestaurantCommunity({
     }
     try {
       const res = await fetch(
-        `/api/restaurants/${encodeURIComponent(restaurantId)}/comments/${encodeURIComponent(commentId)}/like`,
+        `${apiBase}/comments/${encodeURIComponent(commentId)}/like`,
         { method: "POST" }
       );
       if (!res.ok) return;
@@ -310,7 +326,7 @@ export default function RestaurantCommunity({
     if (!confirm(copy.deleteConfirm)) return;
     try {
       const res = await fetch(
-        `/api/restaurants/${encodeURIComponent(restaurantId)}/comments/${encodeURIComponent(commentId)}`,
+        `${apiBase}/comments/${encodeURIComponent(commentId)}`,
         { method: "DELETE" }
       );
       if (!res.ok) return;

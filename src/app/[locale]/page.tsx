@@ -4,12 +4,14 @@ import HeroSection, { type HeroShowcaseRestaurant } from "@/components/HeroSecti
 import TopRestaurants from "@/components/TopRestaurants";
 import TrendingRanking from "@/components/TrendingRanking";
 import HomeDiscovery from "@/components/HomeDiscovery";
+import LifeZoneHomeSection from "@/components/LifeZoneHomeSection";
 import AdSlot from "@/components/AdSlot";
 import JsonLd from "@/components/JsonLd";
 import { buildOrganizationJsonLd } from "@/lib/json-ld";
 import { getDb } from "@/lib/cloudflare";
 import { getHourlyRotationSeed, rotateRestaurantsByTier } from "@/lib/restaurant-rotation";
 import { matchesStationArea, stationAreas, type StationAreaKey } from "@/lib/station-areas";
+import type { LifePlaceRow } from "@/lib/life-types";
 
 export const dynamic = "force-dynamic";
 
@@ -146,17 +148,73 @@ async function getHeroShowcaseRestaurants(): Promise<HeroShowcaseRestaurant[]> {
   }
 }
 
+async function getLifeZoneHomeData(): Promise<{
+  categoryCounts: Record<string, number>;
+  featuredPlaces: LifePlaceRow[];
+}> {
+  try {
+    const db = await getDb();
+    const [countsRes, featuredRes] = await Promise.all([
+      db
+        .prepare(
+          `SELECT category, COUNT(*) AS count
+           FROM life_places
+           WHERE is_active = 1
+             AND COALESCE(business_status, 'OPERATIONAL') != 'CLOSED_PERMANENTLY'
+           GROUP BY category`
+        )
+        .all<{ category: string; count: number }>(),
+      db
+        .prepare(
+          `SELECT *
+           FROM life_places
+           WHERE is_active = 1
+             AND COALESCE(business_status, 'OPERATIONAL') != 'CLOSED_PERMANENTLY'
+           ORDER BY COALESCE(rating, 0) DESC, COALESCE(review_count, 0) DESC
+           LIMIT 24`
+        )
+        .all<LifePlaceRow>(),
+    ]);
+
+    const categoryCounts: Record<string, number> = {};
+    for (const row of countsRes.results ?? []) {
+      categoryCounts[row.category] = row.count;
+    }
+
+    // 按不同分类优先各挑 1 家组成 4 张精选卡，避免首页全是同一个品类
+    const pool = featuredRes.results ?? [];
+    const picked: LifePlaceRow[] = [];
+    const seenCats = new Set<string>();
+    for (const item of pool) {
+      if (picked.length >= 4) break;
+      if (!seenCats.has(item.category)) {
+        seenCats.add(item.category);
+        picked.push(item);
+      }
+    }
+    for (const item of pool) {
+      if (picked.length >= 4) break;
+      if (!picked.some((p) => p.id === item.id)) picked.push(item);
+    }
+
+    return { categoryCounts, featuredPlaces: picked };
+  } catch {
+    return { categoryCounts: {}, featuredPlaces: [] };
+  }
+}
+
 export default async function HomePage({ params, searchParams }: Props) {
   const { locale } = await params;
   const query = await searchParams;
   const topPage = parsePage(query.topPage);
   const topSeed = parseSeed(query.topSeed);
   const t = await getTranslations({ locale, namespace: "home" });
-  const [cuisineCounts, dishTypeCounts, stationAreaCounts, heroShowcase] = await Promise.all([
+  const [cuisineCounts, dishTypeCounts, stationAreaCounts, heroShowcase, lifeZone] = await Promise.all([
     getCuisineCounts(),
     getDishTypeCounts(),
     getStationAreaCounts(),
     getHeroShowcaseRestaurants(),
+    getLifeZoneHomeData(),
   ]);
 
   return (
@@ -168,6 +226,12 @@ export default async function HomePage({ params, searchParams }: Props) {
           locale={locale}
           dishTypeCounts={dishTypeCounts}
           stationCounts={stationAreaCounts}
+        />
+        <div className="divider-chinese" />
+        <LifeZoneHomeSection
+          locale={locale}
+          categoryCounts={lifeZone.categoryCounts}
+          featuredPlaces={lifeZone.featuredPlaces}
         />
         <div className="divider-chinese" />
         <TrendingRanking locale={locale} />

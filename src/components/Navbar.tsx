@@ -31,6 +31,7 @@ export default function Navbar({ locale, user }: Props) {
     { href: `/${locale}/verify`, label: t("verify") },
     { href: `/${locale}/cuisines`, label: t("cuisines") },
     { href: `/${locale}/map`, label: t("map") },
+    { href: `/${locale}/life`, label: t("life") },
     { href: `/${locale}/favorites`, label: t("favorites") },
     { href: `/${locale}/about`, label: t("about") },
   ];

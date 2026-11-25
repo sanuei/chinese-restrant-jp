@@ -322,3 +322,77 @@ export async function generateBilingualSummary(
     { role: "user", content: userContent }
   ], 0.3); // 略微提高温度让语言更自然
 }
+
+export interface LifePlaceAiAnalysis {
+  is_chinese_service: boolean;
+  name_zh: string;
+  name_ja: string;
+  category: "hair" | "medical" | "fitness" | "massage" | "beauty" | "entertainment" | "housing" | "services";
+  chinese_support: "native" | "bilingual" | "friendly";
+  summary_zh: string;
+  summary_ja: string;
+  tags_zh: string[];
+  tags_ja: string[];
+}
+
+/** 分析在日华人生活服务门店：判断是否支持中文/面向华人，并输出分类、中文支持等级与双语亮点 */
+export async function analyzeLifePlaceSnapshot(input: {
+  name: string;
+  address: string;
+  hintCategory?: string;
+  rating: number;
+  reviewCount: number;
+  website?: string | null;
+  reviews: { author_name: string; rating: number; text: string; language?: string }[];
+}): Promise<LifePlaceAiAnalysis> {
+  const systemPrompt = `你是熟悉东京及关东在日华人生活圈的编辑，负责审核一家门店是否适合收录进「在日华人生活专区」。
+请根据门店名称、地址、官网和 Google 评论判断：
+1. is_chinese_service: 必须同时满足以下两个条件才返回 true，否则返回 false：
+   (a) 该门店必须严格属于下方 8 种「非餐饮生活服务」之一。凡是餐厅、中餐馆、火锅店（如海底捞）、烧烤、拉面、奶茶咖啡、甜品店、居酒屋、中华物产店/超市、酒店宾馆等餐饮/食品零售/住宿场所，一律返回 false，绝不能强行塞进 entertainment 或其他分类！
+   (b) 该店确实由华人经营、有中文店员/医生/教练/造型师，或明确提供中文服务/中文友好体验。如果只是普通日本本地店且没有任何华人或中文服务线索（例如完全是普通日本健身房、普通医院且评论与店名均未提及中文/华人），请返回 false。注意：如果店名明显带有华人/中国/中文特征（如「中国語対応」「中華」「华人」「台湾」「中国整体」「中式推拿」「中国語OK」等）或评论中有中文用户提及中文服务/华人老板/中文医生/中文理发师，应返回 true。
+2. category 只能是以下 8 种之一：
+   - hair: 华人理发店/美发沙龙
+   - medical: 中文医院/诊所（内科、牙科、妇产、眼科、综合医院等）
+   - fitness: 健身房/私教/瑜伽/普拉提/格斗馆
+   - massage: 中医推拿/整体/足疗/针灸/拔罐养生
+   - beauty: 美容/美甲美睫/皮肤管理/纹绣
+   - entertainment: 中文KTV/麻将棋牌/剧本杀/桌游台球娱乐
+   - housing: 华人房产中介/租房买房/搬家/中日物流
+   - services: 签证行政书士/税务会计/留学/驾校/生活综合服务
+3. chinese_support 只能是以下之一：
+   - native: 华人老板主理或全程纯中文沟通
+   - bilingual: 有中文医生/理发师/教练/店员常驻
+   - friendly: 中文友好/部分人员可中文沟通或中文菜单导诊
+4. name_zh: 规范简洁的简体中文店名（不要重复附加冗长广告副标题）
+5. name_ja: 规范简洁的日文店名
+6. summary_zh: 40-85字中文客观介绍，突出具体服务特色、中文沟通体验和口碑要点
+7. summary_ja: 45-95字日文客观介绍
+8. tags_zh: 3-4个简短中文特色标签（如 ["全程中文", "理发剪烫", "近池袋站"]）
+9. tags_ja: 3-4个对应日文标签
+
+严格返回纯 JSON，不要附加 markdown 代码块或额外解释。`;
+
+  const reviewsText =
+    input.reviews.length > 0
+      ? input.reviews
+          .slice(0, 5)
+          .map((r, i) => `${i + 1}. [${r.rating}★] ${(r.text || "").replace(/\s+/g, " ").slice(0, 260)}`)
+          .join("\n")
+      : "暂无评论";
+
+  const userContent = `店名: ${input.name}
+地址: ${input.address}
+参考分类: ${input.hintCategory || "未知"}
+评分: ${input.rating}（${input.reviewCount}条评论）
+官网: ${input.website || "无"}
+Google评论:
+${reviewsText}`;
+
+  return callDeepSeek<LifePlaceAiAnalysis>(
+    [
+      { role: "system", content: systemPrompt },
+      { role: "user", content: userContent },
+    ],
+    0.2
+  );
+}
