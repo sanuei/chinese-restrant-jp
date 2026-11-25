@@ -463,7 +463,13 @@ export default function RestaurantFilterBar({
       </div>
 
       {/* ==================== 移动端：参考美团 App 的吸顶搜索 + 4栏下拉抽屉 + 横滑快筛 ==================== */}
-      <div className="md:hidden -mx-4 sticky top-16 z-40 border-b border-white/10 bg-[#0a090e]/95 px-3.5 pt-2.5 pb-2.5 backdrop-blur-xl">
+      {mobileSheet && (
+        <div
+          className="fixed inset-0 top-16 z-30 bg-black/70 backdrop-blur-[2px] md:hidden"
+          onClick={() => setMobileSheet(null)}
+        />
+      )}
+      <div className="md:hidden -mx-4 sticky top-16 z-40 border-b border-white/10 bg-[#0a090e] px-3.5 pt-2.5 pb-2.5">
         {/* 顶部搜索胶囊 + 地图图标按钮 */}
         <div className="flex items-center gap-2">
           <form onSubmit={handleSearchSubmit} className="relative flex-1">
@@ -671,12 +677,7 @@ export default function RestaurantFilterBar({
 
         {/* ========== 移动端弹出式美团筛选抽屉 ========== */}
         {mobileSheet && (
-          <>
-            <div
-              className="fixed inset-0 top-16 z-40 bg-black/65 backdrop-blur-[2px]"
-              onClick={() => setMobileSheet(null)}
-            />
-            <div className="absolute inset-x-0 top-full z-50 max-h-[68vh] overflow-y-auto border-b border-white/15 bg-[#121118] shadow-2xl">
+          <div className="absolute inset-x-0 top-full z-50 max-h-[68vh] overflow-y-auto border-b border-white/15 bg-[#121118] shadow-2xl">
               {/* 1. 全城商圈 */}
               {mobileSheet === "station" && (
                 <div className="p-4">
@@ -949,7 +950,6 @@ export default function RestaurantFilterBar({
                 </div>
               )}
             </div>
-          </>
         )}
       </div>
     </div>

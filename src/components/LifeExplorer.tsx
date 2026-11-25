@@ -153,8 +153,8 @@ export default function LifeExplorer({
 
   return (
     <div className="min-h-screen pb-20">
-      {/* 顶部暗黑曜石氛围 Hero */}
-      <section className="relative overflow-hidden border-b border-white/10 bg-[#07070a] py-12 sm:py-16">
+      {/* 顶部暗黑曜石氛围 Hero（移动端紧凑化，首屏直出门店列表） */}
+      <section className="relative overflow-hidden border-b border-white/10 bg-[#07070a] py-4 sm:py-14">
         <div
           className="pointer-events-none absolute inset-0"
           style={{
@@ -162,62 +162,68 @@ export default function LifeExplorer({
               "radial-gradient(ellipse 62% 280px at 50% 0%, rgba(235, 168, 52, 0.14) 0%, rgba(196, 62, 34, 0.07) 48%, transparent 78%)",
           }}
         />
-        <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="relative mx-auto max-w-7xl px-3.5 sm:px-6 lg:px-8">
           <div className="mx-auto max-w-3xl text-center">
-            <div className="inline-flex items-center gap-2 rounded-full border border-gold-300/30 bg-gold-500/10 px-3.5 py-1 text-xs font-semibold tracking-wide text-gold-300">
+            <div className="hidden sm:inline-flex items-center gap-2 rounded-full border border-gold-300/30 bg-gold-500/10 px-3.5 py-1 text-xs font-semibold tracking-wide text-gold-300">
               <Compass size={13} />
               <span>{copy.badge}</span>
               <span className="text-white/40">·</span>
               <span className="text-white/80">{copy.countLabel(places.length)}</span>
             </div>
 
-            <h1 className="mt-4 font-serif text-3xl font-black tracking-tight text-white sm:text-5xl">
-              {copy.title}
-            </h1>
-            <p className="mt-3 text-sm leading-relaxed text-white/65 sm:text-base">
+            <div className="flex items-center justify-between sm:block">
+              <h1 className="font-serif text-xl font-black tracking-tight text-white sm:mt-4 sm:text-5xl">
+                {copy.title}
+              </h1>
+              <span className="inline-flex items-center gap-1 rounded-full border border-gold-300/30 bg-gold-500/10 px-2.5 py-0.5 text-[11px] font-semibold text-gold-300 sm:hidden">
+                <Compass size={11} />
+                {copy.countLabel(places.length)}
+              </span>
+            </div>
+            <p className="mt-3 hidden text-sm leading-relaxed text-white/65 sm:block sm:text-base">
               {copy.subtitle}
             </p>
 
             {/* 搜索框 */}
-            <div className="relative mx-auto mt-6 max-w-xl">
+            <div className="relative mx-auto mt-3 max-w-xl sm:mt-6">
               <Search
-                size={17}
-                className="pointer-events-none absolute top-1/2 left-4 -translate-y-1/2 text-white/45"
+                size={16}
+                className="pointer-events-none absolute top-1/2 left-3.5 -translate-y-1/2 text-white/45 sm:left-4"
               />
               <input
                 type="text"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder={copy.searchPlaceholder}
-                className="w-full rounded-full border border-white/15 bg-[#121118]/95 py-3.5 pr-11 pl-11 text-sm text-white shadow-[0_12px_36px_rgba(0,0,0,0.45)] placeholder:text-white/40 focus:border-gold-300/60 focus:outline-none focus:ring-2 focus:ring-gold-300/15"
+                className="w-full rounded-full border border-white/15 bg-[#121118]/95 py-2.5 pr-10 pl-10 text-xs text-white shadow-[0_12px_36px_rgba(0,0,0,0.45)] placeholder:text-white/40 focus:border-gold-300/60 focus:outline-none focus:ring-2 focus:ring-gold-300/15 sm:py-3.5 sm:pr-11 sm:pl-11 sm:text-sm"
               />
               {query && (
                 <button
                   type="button"
                   onClick={() => setQuery("")}
                   aria-label="Clear"
-                  className="absolute top-1/2 right-3.5 -translate-y-1/2 rounded-full p-1 text-white/50 hover:bg-white/10 hover:text-white"
+                  className="absolute top-1/2 right-3 -translate-y-1/2 rounded-full p-1 text-white/50 hover:bg-white/10 hover:text-white"
                 >
-                  <X size={15} />
+                  <X size={14} />
                 </button>
               )}
             </div>
           </div>
 
-          {/* 8 大生活分类快捷网格 */}
-          <div className="mt-9 grid grid-cols-2 gap-2.5 sm:grid-cols-4 lg:grid-cols-9">
+          {/* 8 大生活分类快捷网格（移动端紧凑 3×3 宫格，不占满整屏） */}
+          <div className="mt-3.5 grid grid-cols-3 gap-1.5 sm:mt-9 sm:grid-cols-4 sm:gap-2.5 lg:grid-cols-9">
             <button
               type="button"
               onClick={() => setCategory("")}
-              className={`group flex flex-col items-center justify-center rounded-2xl border px-3 py-3.5 text-center transition-all ${
+              className={`group flex flex-col items-center justify-center rounded-xl border px-1.5 py-2 text-center transition-all sm:rounded-2xl sm:px-3 sm:py-3.5 ${
                 !category
-                  ? "border-gold-300/65 bg-gradient-to-b from-[#e05634]/22 to-[#14121a] text-white shadow-[0_10px_28px_rgba(224,86,52,0.22)]"
+                  ? "border-gold-300/65 bg-gradient-to-b from-[#e05634]/22 to-[#14121a] text-white shadow-[0_8px_22px_rgba(224,86,52,0.2)]"
                   : "border-white/10 bg-[#121117]/85 text-white/75 hover:border-gold-300/40 hover:text-white"
               }`}
             >
-              <Sparkles size={19} className={!category ? "text-gold-300" : "text-white/60 group-hover:text-gold-300"} />
-              <span className="mt-2 text-xs font-bold">{copy.allCategories}</span>
-              <span className="mt-0.5 text-[11px] text-white/45">{places.length}</span>
+              <Sparkles size={16} className={!category ? "text-gold-300 sm:h-[19px] sm:w-[19px]" : "text-white/60 group-hover:text-gold-300 sm:h-[19px] sm:w-[19px]"} />
+              <span className="mt-1 text-[11px] font-bold sm:mt-2 sm:text-xs">{copy.allCategories}</span>
+              <span className="text-[10px] text-white/45 sm:mt-0.5 sm:text-[11px]">{places.length}</span>
             </button>
 
             {lifeCategories.map((cat) => {
@@ -230,21 +236,21 @@ export default function LifeExplorer({
                   key={cat}
                   type="button"
                   onClick={() => setCategory(active ? "" : cat)}
-                  className={`group flex flex-col items-center justify-center rounded-2xl border px-2.5 py-3.5 text-center transition-all ${
+                  className={`group flex flex-col items-center justify-center rounded-xl border px-1.5 py-2 text-center transition-all sm:rounded-2xl sm:px-2.5 sm:py-3.5 ${
                     active
-                      ? "border-gold-300/70 bg-gradient-to-b from-gold-500/18 to-[#14121a] text-white shadow-[0_10px_28px_rgba(235,168,52,0.2)]"
+                      ? "border-gold-300/70 bg-gradient-to-b from-gold-500/18 to-[#14121a] text-white shadow-[0_8px_22px_rgba(235,168,52,0.2)]"
                       : "border-white/10 bg-[#121117]/85 text-white/78 hover:border-gold-300/40 hover:bg-[#17151f] hover:text-white"
                   }`}
                 >
                   <Icon
-                    size={19}
+                    size={16}
                     style={{ color: active ? meta.accent : undefined }}
-                    className={active ? "" : "text-gold-300/80 transition-transform group-hover:scale-110"}
+                    className={active ? "sm:h-[19px] sm:w-[19px]" : "text-gold-300/80 transition-transform group-hover:scale-110 sm:h-[19px] sm:w-[19px]"}
                   />
-                  <span className="mt-2 line-clamp-1 text-xs font-bold">
+                  <span className="mt-1 line-clamp-1 text-[11px] font-bold sm:mt-2 sm:text-xs">
                     {isZh ? meta.zh : meta.ja}
                   </span>
-                  <span className="mt-0.5 text-[11px] text-white/45">{count}</span>
+                  <span className="text-[10px] text-white/45 sm:mt-0.5 sm:text-[11px]">{count}</span>
                 </button>
               );
             })}
@@ -253,17 +259,17 @@ export default function LifeExplorer({
       </section>
 
       {/* 二级筛选条 + 结果区 */}
-      <section className="mx-auto max-w-7xl px-4 pt-6 sm:px-6 lg:px-8">
+      <section className="mx-auto max-w-7xl px-3.5 pt-3 sm:px-6 sm:pt-6 lg:px-8">
         {/* 当前分类说明 */}
         {category && lifeCategories.includes(category as LifeCategory) && (
-          <div className="mb-5 flex items-center justify-between gap-3 rounded-2xl border border-gold-300/20 bg-gradient-to-r from-gold-500/10 via-[#13121a] to-[#13121a] px-4 py-3">
+          <div className="mb-3.5 flex items-center justify-between gap-3 rounded-2xl border border-gold-300/20 bg-gradient-to-r from-gold-500/10 via-[#13121a] to-[#13121a] px-3.5 py-2.5 sm:mb-5 sm:px-4 sm:py-3">
             <div>
-              <h2 className="font-serif text-base font-bold text-white">
+              <h2 className="font-serif text-sm font-bold text-white sm:text-base">
                 {isZh
                   ? LIFE_CATEGORY_META[category as LifeCategory].zh
                   : LIFE_CATEGORY_META[category as LifeCategory].ja}
               </h2>
-              <p className="mt-0.5 text-xs text-white/60">
+              <p className="mt-0.5 text-[11px] text-white/60 sm:text-xs">
                 {isZh
                   ? LIFE_CATEGORY_META[category as LifeCategory].descZh
                   : LIFE_CATEGORY_META[category as LifeCategory].descJa}
@@ -280,14 +286,14 @@ export default function LifeExplorer({
         )}
 
         {/* 中文支持度 + 商圈 + 排序 */}
-        <div className="mb-6 flex flex-col gap-3 rounded-2xl border border-white/10 bg-[#100f15] p-3.5 sm:p-4">
-          <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="mb-3.5 flex flex-col gap-2 rounded-2xl border border-white/10 bg-[#100f15] p-2.5 sm:mb-6 sm:gap-3 sm:p-4">
+          <div className="flex flex-wrap items-center justify-between gap-2 sm:gap-3">
             {/* 中文支持度胶囊 */}
-            <div className="flex flex-wrap items-center gap-1.5">
+            <div className="scroll-row !gap-1.5 !pb-0">
               <button
                 type="button"
                 onClick={() => setSupport("")}
-                className={`rounded-full border px-3 py-1 text-xs font-medium transition-all ${
+                className={`shrink-0 rounded-full border px-2.5 py-1 text-[11px] font-medium transition-all sm:px-3 sm:text-xs ${
                   !support
                     ? "border-gold-300/60 bg-gold-500/18 text-gold-300"
                     : "border-white/10 bg-white/[0.04] text-white/70 hover:text-white"
@@ -303,7 +309,7 @@ export default function LifeExplorer({
                     key={lvl}
                     type="button"
                     onClick={() => setSupport(active ? "" : lvl)}
-                    className={`rounded-full border px-3 py-1 text-xs font-medium transition-all ${
+                    className={`shrink-0 rounded-full border px-2.5 py-1 text-[11px] font-medium transition-all sm:px-3 sm:text-xs ${
                       active
                         ? "border-gold-300/70 bg-vermilion-700 text-white"
                         : "border-white/10 bg-white/[0.04] text-white/75 hover:border-white/25 hover:text-white"
@@ -414,7 +420,7 @@ export default function LifeExplorer({
             )}
           </div>
         ) : (
-          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-5 lg:grid-cols-3">
             {filtered.map((item) => {
               const catMeta = LIFE_CATEGORY_META[item.category];
               const supportMeta = CHINESE_SUPPORT_META[item.chineseSupport];
@@ -424,6 +430,92 @@ export default function LifeExplorer({
                   key={item.id}
                   className="restaurant-card group flex flex-col overflow-hidden"
                 >
+                  {/* 移动端：美团风左图右文紧凑信息流卡 */}
+                  <div className="flex gap-3 p-3 sm:hidden">
+                    <Link
+                      href={`/${locale}/life/${item.id}`}
+                      className="relative h-26 w-26 shrink-0 overflow-hidden rounded-xl bg-[#181620]"
+                    >
+                      {item.photo ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={item.photo}
+                          alt={item.name}
+                          loading="lazy"
+                          className="h-full w-full object-cover"
+                        />
+                      ) : (
+                        <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-[#1b1924] to-[#100f15]">
+                          <CatIcon size={26} style={{ color: catMeta.accent, opacity: 0.65 }} />
+                        </div>
+                      )}
+                      <span
+                        className={`absolute top-1.5 left-1.5 rounded-full border px-1.5 py-[1px] text-[9.5px] font-bold backdrop-blur-md ${supportMeta.cls}`}
+                      >
+                        {isZh ? supportMeta.zh : supportMeta.ja}
+                      </span>
+                    </Link>
+
+                    <div className="flex min-w-0 flex-1 flex-col justify-between">
+                      <div>
+                        <div className="flex items-start justify-between gap-2">
+                          <Link
+                            href={`/${locale}/life/${item.id}`}
+                            className="line-clamp-1 font-serif text-[15px] font-bold leading-snug text-white"
+                          >
+                            {item.name}
+                          </Link>
+                          {item.rating > 0 && (
+                            <span className="inline-flex shrink-0 items-center gap-0.5 rounded-md bg-[#f2cb72]/14 px-1.5 py-0.5 text-xs font-extrabold text-[#f2cb72]">
+                              <Star size={11} className="fill-[#f2cb72] text-[#f2cb72]" />
+                              {item.rating.toFixed(1)}
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="mt-1 flex items-center gap-1.5 text-[11px]">
+                          <span
+                            className="inline-flex items-center gap-1 rounded border border-white/10 bg-white/[0.05] px-1.5 py-0 text-[10px] font-semibold"
+                            style={{ color: catMeta.accent }}
+                          >
+                            <CatIcon size={10} />
+                            {isZh ? catMeta.zh : catMeta.ja}
+                          </span>
+                          {item.reviewCount > 0 && (
+                            <span className="text-white/45">
+                              {item.reviewCount}
+                              {copy.reviewsUnit}
+                            </span>
+                          )}
+                        </div>
+
+                        {item.summary && (
+                          <p className="mt-1.5 line-clamp-2 text-[11.5px] leading-relaxed text-white/68">
+                            {item.summary}
+                          </p>
+                        )}
+                      </div>
+
+                      <div className="mt-1.5 flex items-center justify-between gap-2 text-[11px] text-white/50">
+                        <span className="inline-flex min-w-0 items-center gap-1 truncate">
+                          <TrainFront size={11} className="shrink-0 text-gold-300/75" />
+                          <span className="truncate">{item.stationLabel || item.ward}</span>
+                        </span>
+                        <a
+                          href={item.mapsUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex shrink-0 items-center gap-0.5 rounded-full border border-white/15 bg-white/[0.05] px-2 py-0.5 text-[10.5px] font-semibold text-gold-300"
+                        >
+                          <Navigation size={10} />
+                          {copy.navigate}
+                        </a>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 桌面端 / 平板：精致大图卡 */}
+                  <div className="hidden sm:flex sm:flex-1 sm:flex-col">
                   {/* 封面图 */}
                   <Link
                     href={`/${locale}/life/${item.id}`}
@@ -537,6 +629,7 @@ export default function LifeExplorer({
                         {copy.navigate}
                       </a>
                     </div>
+                  </div>
                   </div>
                 </article>
               );

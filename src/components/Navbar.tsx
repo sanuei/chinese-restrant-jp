@@ -52,11 +52,11 @@ export default function Navbar({ locale, user }: Props) {
               height={38}
               className="h-9 w-9 object-contain"
             />
-            <div className="hidden sm:block">
+            <div>
               <div className="font-serif font-black text-base leading-tight text-white">
                 {locale === "zh" ? "真味中华" : "ガチ中華ナビ"}
               </div>
-              <div className="text-[11px] leading-tight text-white/48">
+              <div className="hidden sm:block text-[11px] leading-tight text-white/48">
                 {locale === "zh" ? "在日中国餐厅评鉴" : "在日中国料理ガイド"}
               </div>
             </div>
