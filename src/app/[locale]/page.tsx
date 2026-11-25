@@ -8,7 +8,7 @@ import AdSlot from "@/components/AdSlot";
 import JsonLd from "@/components/JsonLd";
 import { buildOrganizationJsonLd } from "@/lib/json-ld";
 import { getDb } from "@/lib/cloudflare";
-import { stationAreas, type StationAreaKey } from "@/lib/station-areas";
+import { matchesStationArea, stationAreas, type StationAreaKey } from "@/lib/station-areas";
 
 export const dynamic = "force-dynamic";
 
@@ -49,11 +49,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 async function getCuisineCounts(): Promise<Record<string, number>> {
   try {
     const db = await getDb();
+    // 统计全部在架餐厅，与 /cuisines 页及点击跳转后的 /restaurants?cuisine= 列表保持 100% 一致
     const result = await db
       .prepare(
         `SELECT cuisine_type, COUNT(*) as count
          FROM restaurants
-         WHERE is_active = 1 AND authenticity = 'authentic'
+         WHERE is_active = 1
          GROUP BY cuisine_type`
       )
       .all<{ cuisine_type: string; count: number }>();
@@ -71,11 +72,12 @@ async function getCuisineCounts(): Promise<Record<string, number>> {
 async function getDishTypeCounts(): Promise<Record<string, number>> {
   try {
     const db = await getDb();
+    // 统计全部在架餐厅，与点击跳转后的 /restaurants?dish_type= 列表保持 100% 一致
     const result = await db
       .prepare(
         `SELECT dish_type, COUNT(*) as count
          FROM restaurants
-         WHERE is_active = 1 AND authenticity = 'authentic'
+         WHERE is_active = 1
          GROUP BY dish_type`
       )
       .all<{ dish_type: string; count: number }>();
@@ -95,18 +97,19 @@ async function getStationAreaCounts(): Promise<Record<StationAreaKey, number>> {
 
   try {
     const db = await getDb();
+    // 统计全部在架餐厅，使用统一的 matchesStationArea 规则，与 /restaurants?station= 结果严格一致
     const result = await db
       .prepare(
         `SELECT nearest_station, COUNT(*) AS count
          FROM restaurants
-         WHERE is_active = 1 AND authenticity = 'authentic' AND nearest_station IS NOT NULL
+         WHERE is_active = 1 AND nearest_station IS NOT NULL
          GROUP BY nearest_station`
       )
       .all<{ nearest_station: string; count: number }>();
 
     for (const row of result.results ?? []) {
       for (const station of stationAreas) {
-        if (row.nearest_station.includes(station.searchTerm)) counts[station.key] += row.count;
+        if (matchesStationArea(row.nearest_station, station)) counts[station.key] += row.count;
       }
     }
   } catch {

@@ -24,6 +24,13 @@ import {
   type RestaurantRow,
 } from "@/lib/restaurant-types";
 import { buildRestaurantSearchClause } from "@/lib/restaurant-search";
+import {
+  buildStationAreaSqlClause,
+  getStationArea,
+  getStationAreaLabel,
+  stationAreas,
+  type StationAreaKey,
+} from "@/lib/station-areas";
 
 export const dynamic = "force-dynamic";
 
@@ -47,6 +54,10 @@ function getDishTypeFilter(value: string): DishType | "" {
 
 function getAuthenticityFilter(value: string): Authenticity | "" {
   return authenticityTypes.includes(value as Authenticity) ? (value as Authenticity) : "";
+}
+
+function getStationFilter(value: string): StationAreaKey | "" {
+  return getStationArea(value)?.key ?? "";
 }
 
 function getMinRatingFilter(value: string): number | null {
@@ -106,57 +117,71 @@ export default async function RestaurantsPage({
   const q = getQueryValue(queryParams.q).trim();
   const cuisine = getCuisineFilter(getQueryValue(queryParams.cuisine));
   const dishType = getDishTypeFilter(getQueryValue(queryParams.dish_type));
+  const station = getStationFilter(getQueryValue(queryParams.station));
+  const stationInfo = station ? getStationArea(station) : null;
   const authenticityFilter = getAuthenticityFilter(getQueryValue(queryParams.authenticity));
   const minRating = getMinRatingFilter(getQueryValue(queryParams.minRating));
   const sort = getSortOption(getQueryValue(queryParams.sort));
-  const hasFilters = Boolean(q || cuisine || dishType || authenticityFilter || minRating || sort !== "rating");
+  const hasFilters = Boolean(q || cuisine || dishType || station || authenticityFilter || minRating || sort !== "rating");
 
   const db = await getDb();
 
   // 构建查询语句
-  let sql = `SELECT * FROM restaurants WHERE is_active = 1`;
+  let whereSql = `WHERE is_active = 1`;
   const binds: SqlBind[] = [];
 
   if (q) {
     const searchClause = buildRestaurantSearchClause(q);
     if (searchClause) {
-      sql += ` AND ${searchClause.condition}`;
+      whereSql += ` AND ${searchClause.condition}`;
       binds.push(...searchClause.binds);
     }
   }
 
   if (cuisine) {
-    sql += ` AND cuisine_type = ?`;
+    whereSql += ` AND cuisine_type = ?`;
     binds.push(cuisine);
   }
 
   if (dishType) {
-    sql += ` AND dish_type = ?`;
+    whereSql += ` AND dish_type = ?`;
     binds.push(dishType);
   }
 
+  if (station) {
+    const stationClause = buildStationAreaSqlClause(station);
+    if (stationClause) {
+      whereSql += ` AND ${stationClause.condition}`;
+      binds.push(...stationClause.binds);
+    }
+  }
+
   if (authenticityFilter) {
-    sql += ` AND authenticity = ?`;
+    whereSql += ` AND authenticity = ?`;
     binds.push(authenticityFilter);
   }
 
   if (minRating) {
-    sql += ` AND COALESCE(trusted_rating, raw_rating, 0) >= ?`;
+    whereSql += ` AND COALESCE(trusted_rating, raw_rating, 0) >= ?`;
     binds.push(minRating);
   }
 
-  if (sort === "reviews") {
-    sql += ` ORDER BY raw_review_count DESC, trusted_rating DESC LIMIT 50`;
-  } else if (sort === "newest") {
-    sql += ` ORDER BY last_synced_at DESC, updated_at DESC, trusted_rating DESC LIMIT 50`;
-  } else {
-    sql += ` ORDER BY trusted_rating DESC, raw_review_count DESC LIMIT 50`;
-  }
+  const orderSql = sort === "reviews"
+    ? `ORDER BY raw_review_count DESC, trusted_rating DESC`
+    : sort === "newest"
+      ? `ORDER BY last_synced_at DESC, updated_at DESC, trusted_rating DESC`
+      : `ORDER BY trusted_rating DESC, raw_review_count DESC`;
 
+  const displayLimit = 120;
   let restaurants: RestaurantRow[] = [];
+  let totalCount = 0;
   try {
-    const { results = [] } = await db.prepare(sql).bind(...binds).all<RestaurantRow>();
-    restaurants = results || [];
+    const [countRow, listRes] = await Promise.all([
+      db.prepare(`SELECT COUNT(*) AS total FROM restaurants ${whereSql}`).bind(...binds).first<{ total: number }>(),
+      db.prepare(`SELECT * FROM restaurants ${whereSql} ${orderSql} LIMIT ${displayLimit}`).bind(...binds).all<RestaurantRow>(),
+    ]);
+    restaurants = listRes.results || [];
+    totalCount = countRow?.total ?? restaurants.length;
   } catch (error) {
     console.error("Database query error:", error);
   }
@@ -168,18 +193,25 @@ export default async function RestaurantsPage({
   if (q) filterQuery.set("q", q);
   if (cuisine) filterQuery.set("cuisine", cuisine);
   if (dishType) filterQuery.set("dish_type", dishType);
+  if (station) filterQuery.set("station", station);
   if (authenticityFilter) filterQuery.set("authenticity", authenticityFilter);
   if (minRating) filterQuery.set("minRating", String(minRating));
   if (sort !== "rating") filterQuery.set("sort", sort);
   const filterQueryString = filterQuery.toString();
   const mapHref = `/${locale}/map${filterQueryString ? `?${filterQueryString}` : ""}`;
+  const stationTitle = stationInfo ? getStationAreaLabel(stationInfo, locale) : "";
   const copy = locale === "zh"
     ? {
-        title: q ? `搜索结果: "${q}"` : "全部餐厅",
-        subtitle: "按菜系、正宗度和可信评分筛选东京餐厅。",
+        title: q
+          ? `搜索结果: "${q}"`
+          : stationTitle
+            ? `${stationTitle} 附近餐厅`
+            : "全部餐厅",
+        subtitle: "按菜系、品类、商圈车站和可信评分筛选东京与关东餐厅。",
         search: "餐厅、菜系、地区",
         allCuisines: "全部菜系",
         allDishTypes: "全部品类",
+        allStations: "全部商圈/车站",
         allAuthenticity: "全部认证",
         minRating: "最低可信评分",
         anyRating: "不限评分",
@@ -190,15 +222,22 @@ export default async function RestaurantsPage({
         submit: "筛选",
         reset: "清除",
         map: "地图视图",
-        count: `找到 ${restaurants.length} 家餐厅`,
-        empty: "没有找到相关餐厅。请尝试其他关键词或菜系。",
+        count: totalCount > restaurants.length
+          ? `找到 ${totalCount} 家餐厅（展示前 ${restaurants.length} 家）`
+          : `找到 ${totalCount} 家餐厅`,
+        empty: "没有找到相关餐厅。请尝试其他关键词或筛选条件。",
       }
     : {
-        title: q ? `検索結果: "${q}"` : "すべてのレストラン",
-        subtitle: "料理ジャンル・認定・信頼スコアで東京の店を絞り込み。",
+        title: q
+          ? `検索結果: "${q}"`
+          : stationTitle
+            ? `${stationTitle} エリアのレストラン`
+            : "すべてのレストラン",
+        subtitle: "料理ジャンル・業態・駅エリア・信頼スコアで東京と関東の店を絞り込み。",
         search: "店名・ジャンル・エリア",
         allCuisines: "すべてのジャンル",
         allDishTypes: "すべての業態",
+        allStations: "すべての駅・エリア",
         allAuthenticity: "すべての認定",
         minRating: "最低信頼スコア",
         anyRating: "指定なし",
@@ -209,7 +248,9 @@ export default async function RestaurantsPage({
         submit: "絞り込む",
         reset: "クリア",
         map: "マップ表示",
-        count: `${restaurants.length}件のレストラン`,
+        count: totalCount > restaurants.length
+          ? `${totalCount}件のレストラン（上位${restaurants.length}件を表示）`
+          : `${totalCount}件のレストラン`,
         empty: "該当するレストランが見つかりません。条件を変えてお試しください。",
       };
 
@@ -235,7 +276,7 @@ export default async function RestaurantsPage({
         </div>
 
         <form action={`/${locale}/restaurants`} className="bg-white border border-warm-200 rounded-xl shadow-sm p-4">
-          <div className="grid grid-cols-1 md:grid-cols-[1.4fr_1fr_1fr] xl:grid-cols-[1.5fr_1fr_1fr_1fr_1fr_1fr_auto] gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-[1.4fr_1fr_1fr_1fr_1fr_1fr_1fr_auto] gap-3">
             <label className="relative">
               <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-400 pointer-events-none z-10" />
               <input
@@ -257,6 +298,13 @@ export default async function RestaurantsPage({
               <option value="">{copy.allDishTypes}</option>
               {dishTypes.map((type) => (
                 <option key={type} value={type}>{td(type)}</option>
+              ))}
+            </select>
+
+            <select name="station" defaultValue={station} className="filter-select">
+              <option value="">{copy.allStations}</option>
+              {stationAreas.map((area) => (
+                <option key={area.key} value={area.key}>{getStationAreaLabel(area, locale)}</option>
               ))}
             </select>
 

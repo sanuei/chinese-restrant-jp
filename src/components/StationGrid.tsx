@@ -22,8 +22,7 @@ export function StationCardGrid({ locale, counts }: Props) {
       {stationAreas.map((station) => {
         const label = locale === "zh" ? station.zh : station.ja;
         const query = new URLSearchParams({
-          q: station.searchTerm,
-          authenticity: "authentic",
+          station: station.key,
         });
 
         return (
@@ -34,7 +33,7 @@ export function StationCardGrid({ locale, counts }: Props) {
           >
             <TrainFront size={18} className="shrink-0 text-vermilion-700 transition-transform group-hover:scale-110" />
             <div className="min-w-0">
-              <div className="font-serif text-sm font-bold leading-tight text-ink-900">{label}</div>
+              <div className="font-serif text-sm font-bold leading-tight text-ink-900 truncate">{label}</div>
               <div className="text-[11px] leading-tight text-ink-400">
                 {t("station_count", { count: counts[station.key] })}
               </div>
