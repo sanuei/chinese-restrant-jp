@@ -106,7 +106,7 @@ function computeTrustedRating(
 }
 
 const CUISINE_TYPES = new Set(["sichuan", "cantonese", "northern", "fujian", "hunan", "jiangsu", "northwest", "yunnan", "other"]);
-const DISH_TYPES = new Set(["hotpot", "bbq", "noodles", "malatang", "dumpling", "riceNoodle", "grilledFish", "dimsum", "deli", "grocery", "other"]);
+const DISH_TYPES = new Set(["hotpot", "bbq", "noodles", "malatang", "dumpling", "riceNoodle", "grilledFish", "dimsum", "breakfast", "deli", "grocery", "other"]);
 const AUTHENTICITY_TYPES = new Set(["authentic", "adapted", "japanese", "unknown"]);
 const CREDIBILITY_ACTIONS = new Set(["keep", "flag", "remove"]);
 

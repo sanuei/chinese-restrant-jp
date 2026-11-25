@@ -9,6 +9,7 @@ import {
   ShoppingBag,
   Soup,
   Store,
+  Sunrise,
   Wheat,
   type LucideIcon,
 } from "lucide-react";
@@ -24,6 +25,7 @@ export const DISH_TYPE_ICONS: Record<DishType, LucideIcon> = {
   riceNoodle: Salad,
   grilledFish: Fish,
   dimsum: Coffee,
+  breakfast: Sunrise,
   deli: ShoppingBag,
   grocery: Store,
   other: HandPlatter,

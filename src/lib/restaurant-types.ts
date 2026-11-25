@@ -22,6 +22,7 @@ export const dishTypes = [
   "riceNoodle",
   "grilledFish",
   "dimsum",
+  "breakfast",
   "deli",
   "grocery",
   "other",
