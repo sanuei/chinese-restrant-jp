@@ -43,64 +43,62 @@ export default function AdSlot({ locale }: Props) {
   return (
     <section className="py-8">
       <div
-        className="rounded-xl border p-5 md:p-6"
+        className="rounded-2xl border p-5 md:p-6 shadow-[0_18px_42px_rgba(0,0,0,0.6)]"
         style={{
-          borderColor: "var(--color-gold-300)",
+          borderColor: "rgba(242, 203, 114, 0.28)",
           background:
-            "linear-gradient(120deg, var(--color-warm-50) 0%, #fff 60%, var(--color-warm-50) 100%)",
+            "linear-gradient(120deg, rgba(235, 168, 52, 0.09) 0%, #111015 55%, rgba(196, 62, 34, 0.09) 100%)",
         }}
       >
         <div className="grid gap-5 md:grid-cols-[minmax(0,1fr)_170px] md:items-stretch md:gap-7">
           <div className="min-w-0">
             <div className="mb-2 flex flex-wrap items-center gap-2">
               {/* 广告要标清楚，别让人以为是站点自己的内容 */}
-              <span
-                className="rounded border px-1.5 py-0.5 text-[10px] font-bold tracking-[0.16em]"
-                style={{ borderColor: "var(--color-warm-200)", color: "var(--color-ink-400)" }}
-              >
+              <span className="rounded border border-white/15 bg-white/5 px-1.5 py-0.5 text-[10px] font-bold tracking-[0.16em] text-white/55">
                 {copy.badge}
               </span>
-              <span className="inline-flex items-center gap-1.5 text-xs font-bold tracking-[0.14em] text-vermilion-700">
+              <span className="inline-flex items-center gap-1.5 text-xs font-bold tracking-[0.14em] text-gold-300">
                 <Megaphone size={14} />
                 {copy.eyebrow}
               </span>
             </div>
 
-            <h2 className="font-serif text-xl font-black leading-tight text-ink-900 sm:text-2xl">
+            <h2 className="font-serif text-xl font-black leading-tight text-white sm:text-2xl">
               {copy.title}
             </h2>
-            <p className="mt-2 text-sm leading-6 text-ink-500">{copy.body}</p>
+            <p className="mt-2 text-sm leading-6 text-white/62">{copy.body}</p>
 
-            <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-warm-100 pt-4">
+            <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-white/10 pt-4">
               <a
                 href={`mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent(
                   isZh ? "首页广告合作咨询" : "トップページ広告掲載の相談"
                 )}`}
-                className="inline-flex items-center gap-2 rounded-md bg-vermilion-700 px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-vermilion-900"
+                className="btn-primary rounded-full px-4 py-2 text-sm font-bold"
               >
                 <Mail size={15} />
                 {copy.mailCta}
               </a>
               <Link
                 href={`/${locale}/contact`}
-                className="text-sm font-semibold text-vermilion-700 hover:underline"
+                className="text-sm font-semibold text-gold-300 hover:underline"
               >
                 {copy.more} →
               </Link>
             </div>
 
-            <p className="mt-2 text-xs text-ink-400">
+            <p className="mt-2 text-xs text-white/45">
               {copy.contactLabel}：
               <a
                 href={`mailto:${CONTACT_EMAIL}`}
-                className="font-semibold text-ink-700 hover:text-vermilion-700"
+                className="font-semibold text-white/80 hover:text-gold-300"
               >
                 {CONTACT_EMAIL}
               </a>
             </p>
           </div>
 
-          <aside className="flex items-center gap-3 rounded-lg border border-warm-200 bg-white p-3 md:h-full md:flex-col md:justify-center md:gap-2 md:text-center">
+          <aside className="flex items-center gap-3 rounded-xl border border-white/10 bg-black/40 p-3 md:h-full md:flex-col md:justify-center md:gap-2 md:text-center">
+            {/* 二维码保留白底框（qr-light-frame），确保微信扫码稳定识别 */}
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src="/contact/wechat-add.webp"
@@ -108,10 +106,10 @@ export default function AdSlot({ locale }: Props) {
               width={720}
               height={918}
               loading="lazy"
-              className="h-24 w-auto shrink-0 rounded border border-warm-100 bg-white md:h-[112px]"
+              className="qr-light-frame h-24 w-auto shrink-0 rounded bg-white p-1 md:h-[112px]"
             />
-            <div className="text-xs leading-5 text-ink-400">
-              <div className="font-bold text-ink-700">{copy.qrTitle}</div>
+            <div className="text-xs leading-5 text-white/55">
+              <div className="font-bold text-white/90">{copy.qrTitle}</div>
               <div>{copy.qrHint}</div>
             </div>
           </aside>

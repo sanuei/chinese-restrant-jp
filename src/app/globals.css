@@ -28,6 +28,7 @@
   /* 文字：深石色 */
   --color-ink-900: oklch(0.18 0.02 30);
   --color-ink-700: oklch(0.32 0.02 30);
+  --color-ink-500: oklch(0.46 0.015 30);
   --color-ink-400: oklch(0.60 0.01 30);
 
   /* 字体 */
@@ -79,6 +80,7 @@ body {
   --color-warm-200: oklch(0.88 0.03 85);
   --color-ink-900: oklch(0.18 0.02 30);
   --color-ink-700: oklch(0.32 0.02 30);
+  --color-ink-500: oklch(0.46 0.015 30);
   --color-ink-400: oklch(0.60 0.01 30);
   --font-serif: 'Noto Serif SC', serif;
   --font-sans: 'Noto Sans SC', sans-serif;
@@ -675,4 +677,207 @@ body {
   .scroll-row-item {
     width: 220px;
   }
+}
+
+/* ================================================
+   前台全局暗黑曜石视觉体系（与 Hero 3D 弧形画廊一脉相承）
+   仅作用于 [locale] 前台，不影响 /admin 后台
+   ================================================ */
+
+.obsidian-site {
+  --color-warm-50: #111014;
+  --color-warm-100: #18161d;
+  --color-warm-200: rgba(255, 255, 255, 0.11);
+  --color-ink-900: #f7f4ee;
+  --color-ink-700: #c0bab0;
+  --color-ink-500: #a09a90;
+  --color-ink-400: #878077;
+  --color-vermilion-50: rgba(230, 90, 53, 0.16);
+  --color-vermilion-100: rgba(230, 90, 53, 0.24);
+  --color-vermilion-200: rgba(242, 146, 98, 0.34);
+  --color-vermilion-500: #f06d49;
+  --color-vermilion-700: #e65a35;
+  --color-vermilion-900: #c84523;
+  --color-gold-300: #f2cb72;
+  --color-gold-500: #e5ab3c;
+  --color-gold-700: #c2861e;
+  --shadow-card: 0 12px 32px rgba(0, 0, 0, 0.52), 0 1px 0 rgba(255, 255, 255, 0.04);
+  --shadow-hover: 0 20px 44px rgba(0, 0, 0, 0.72), 0 0 28px rgba(235, 168, 52, 0.14);
+
+  background-color: #060608;
+  background-image:
+    radial-gradient(ellipse 70% 420px at 50% 0%, rgba(235, 168, 52, 0.05) 0%, transparent 70%),
+    radial-gradient(ellipse 55% 420px at 85% 42%, rgba(196, 62, 34, 0.045) 0%, transparent 72%);
+  color: var(--color-ink-900);
+  color-scheme: dark;
+}
+
+/* 防止前台子页面任何遗留白底卡片出现刺眼亮块（二维码白框用 .qr-light-frame 例外保护） */
+.obsidian-site .bg-white:not(.qr-light-frame) {
+  background-color: #111014;
+}
+
+.obsidian-site .bg-white\/95:not(.qr-light-frame) {
+  background-color: rgba(12, 11, 15, 0.9);
+}
+
+.obsidian-site .bg-white\/90:not(.qr-light-frame) {
+  background-color: rgba(14, 13, 17, 0.84);
+}
+
+/* 餐厅卡片：深炭黑玻璃 + 细微白边 + 悬停暖金微光 */
+.obsidian-site .restaurant-card {
+  background: linear-gradient(180deg, #131218 0%, #0e0d12 100%);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  box-shadow: var(--shadow-card);
+  transition: transform 0.22s ease, border-color 0.22s ease, box-shadow 0.22s ease;
+}
+
+.obsidian-site .restaurant-card:hover {
+  border-color: rgba(242, 203, 114, 0.42);
+  box-shadow: var(--shadow-hover);
+  transform: translateY(-3px);
+}
+
+/* AI 摘要区：暗黑暖金琉璃条 */
+.obsidian-site .ai-summary-card {
+  background: linear-gradient(135deg, rgba(235, 168, 52, 0.11) 0%, rgba(196, 62, 34, 0.07) 100%);
+  border: 1px solid rgba(242, 203, 114, 0.26);
+  color: #ddd6ca;
+}
+
+.obsidian-site .ai-summary-card::before {
+  background: linear-gradient(90deg, #e5ab3c 0%, #e65a35 100%);
+  color: #0b0a0c;
+  box-shadow: 0 2px 10px rgba(235, 168, 52, 0.32);
+}
+
+/* 认证徽章（暗底发光印章质感） */
+.obsidian-site .badge-authentic {
+  background: linear-gradient(135deg, rgba(214, 68, 38, 0.92) 0%, rgba(162, 38, 22, 0.96) 100%);
+  color: #fff8f2;
+  border-color: rgba(255, 168, 138, 0.42);
+  box-shadow: 0 4px 14px rgba(196, 52, 26, 0.45);
+}
+
+.obsidian-site .badge-adapted {
+  background: linear-gradient(135deg, rgba(229, 171, 60, 0.92) 0%, rgba(186, 126, 26, 0.95) 100%);
+  color: #120e07;
+  border-color: rgba(255, 224, 150, 0.5);
+}
+
+.obsidian-site .badge-japanese {
+  background: rgba(56, 114, 178, 0.28);
+  color: #a9d0ff;
+  border-color: rgba(120, 178, 245, 0.4);
+  backdrop-filter: blur(8px);
+}
+
+.obsidian-site .badge-unknown {
+  background: rgba(255, 255, 255, 0.08);
+  color: #b7b1a8;
+  border-color: rgba(255, 255, 255, 0.16);
+  backdrop-filter: blur(8px);
+}
+
+/* 9 菜系标签：暗底半透明彩琉璃，清晰区分各地域风味 */
+.obsidian-site .cuisine-sichuan   { background: rgba(235, 86, 58, 0.16); color: #ff9c87; border-color: rgba(235, 86, 58, 0.34); }
+.obsidian-site .cuisine-cantonese { background: rgba(56, 184, 134, 0.14); color: #84e6bc; border-color: rgba(56, 184, 134, 0.32); }
+.obsidian-site .cuisine-northern  { background: rgba(114, 146, 238, 0.16); color: #adc4ff; border-color: rgba(114, 146, 238, 0.34); }
+.obsidian-site .cuisine-fujian    { background: rgba(56, 176, 206, 0.15); color: #8ce0f5; border-color: rgba(56, 176, 206, 0.32); }
+.obsidian-site .cuisine-hunan     { background: rgba(240, 128, 56, 0.16); color: #ffb985; border-color: rgba(240, 128, 56, 0.34); }
+.obsidian-site .cuisine-jiangsu   { background: rgba(132, 196, 86, 0.15); color: #bce694; border-color: rgba(132, 196, 86, 0.32); }
+.obsidian-site .cuisine-northwest { background: rgba(235, 178, 66, 0.16); color: #f6d58b; border-color: rgba(235, 178, 66, 0.34); }
+.obsidian-site .cuisine-yunnan    { background: rgba(54, 194, 172, 0.15); color: #87ebd9; border-color: rgba(54, 194, 172, 0.32); }
+.obsidian-site .cuisine-other     { background: rgba(255, 255, 255, 0.06); color: #c0bab0; border-color: rgba(255, 255, 255, 0.14); }
+
+/* 首页品类卡片：深黑磨砂玻璃 + 暖金图标 + 悬停暖金流光 */
+.obsidian-site .dish-type-tag {
+  background: linear-gradient(180deg, #141319 0%, #0f0e13 100%);
+  color: #f3ede2;
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.obsidian-site .dish-type-tag svg {
+  color: var(--color-gold-300);
+}
+
+.obsidian-site .dish-type-tag:hover {
+  background: linear-gradient(180deg, rgba(235, 168, 52, 0.14) 0%, rgba(196, 62, 34, 0.08) 100%);
+  border-color: rgba(242, 203, 114, 0.48);
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.55), 0 0 20px rgba(235, 168, 52, 0.14);
+}
+
+/* 按钮：与 Hero CTA 呼应的高级赤金微光按钮 */
+.obsidian-site .btn-primary {
+  background: linear-gradient(135deg, #e05634 0%, #bf3c1f 100%);
+  color: #fff;
+  border: 1px solid rgba(255, 198, 148, 0.28);
+  box-shadow: 0 8px 22px -6px rgba(224, 86, 52, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.22);
+}
+
+.obsidian-site .btn-primary:hover {
+  background: linear-gradient(135deg, #ec6340 0%, #ce4324 100%);
+  box-shadow: 0 12px 28px -6px rgba(230, 90, 53, 0.65), inset 0 1px 0 rgba(255, 255, 255, 0.28);
+}
+
+/* 搜索框与下拉框：暗黑玻璃输入态 */
+.obsidian-site .search-input,
+.obsidian-site .filter-select {
+  background: #141319;
+  color: #f7f4ee;
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+.obsidian-site .search-input:focus,
+.obsidian-site .filter-select:focus {
+  border-color: rgba(242, 203, 114, 0.55);
+  box-shadow: 0 0 0 3px rgba(242, 203, 114, 0.14);
+}
+
+.obsidian-site .filter-select option {
+  background-color: #141319;
+  color: #f7f4ee;
+}
+
+/* 极细暗金分割线 */
+.obsidian-site .divider-chinese {
+  height: 1px;
+  background: linear-gradient(to right, transparent, rgba(242, 203, 114, 0.24), transparent);
+  margin: 22px 0;
+}
+
+/* 首页品类/车站切换胶囊 */
+.obsidian-site .discovery-switch {
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: #121117;
+}
+
+.obsidian-site .discovery-switch-btn {
+  color: #a8a298;
+}
+
+.obsidian-site .discovery-switch-btn:hover {
+  color: #f7f4ee;
+}
+
+.obsidian-site .discovery-tabs #discovery-tab-dish:checked ~ .discovery-head label[for="discovery-tab-dish"],
+.obsidian-site .discovery-tabs #discovery-tab-station:checked ~ .discovery-head label[for="discovery-tab-station"] {
+  background: linear-gradient(135deg, #e05634 0%, #c43f21 100%);
+  color: #fff;
+  box-shadow: 0 4px 14px rgba(224, 86, 52, 0.42);
+}
+
+/* 评论可信度小徽章暗底微调 */
+.obsidian-site .bg-green-50 {
+  background-color: rgba(34, 197, 94, 0.14);
+}
+.obsidian-site .text-green-700 {
+  color: #86efac;
+}
+.obsidian-site .bg-amber-100 {
+  background-color: rgba(245, 158, 11, 0.16);
+}
+.obsidian-site .text-amber-700 {
+  color: #fcd34d;
 }

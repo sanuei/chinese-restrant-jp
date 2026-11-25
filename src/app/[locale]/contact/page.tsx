@@ -157,7 +157,7 @@ export default async function ContactPage({ params }: Props) {
                   width={width}
                   height={height}
                   loading="lazy"
-                  className="mx-auto mt-4 w-full max-w-[260px] rounded-lg border border-warm-200 bg-white"
+                  className="qr-light-frame mx-auto mt-4 w-full max-w-[260px] rounded-lg border border-white/15 bg-white p-1.5"
                 />
               </figure>
             );

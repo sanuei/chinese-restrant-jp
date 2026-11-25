@@ -19,12 +19,12 @@ type Props = {
 const FALLBACK_PHOTO =
   "https://images.unsplash.com/photo-1563245372-f21724e3856d?q=80&w=600&auto=format&fit=crop";
 
-/** 前三名给金银铜，之后统一用素色，避免整排都在抢注意力 */
+/** 前三名给暗底金银铜徽章，之后统一用暗黑磨砂玻璃，避免整排都在抢注意力 */
 function rankStyle(rank: number): string {
-  if (rank === 1) return "bg-gold-500 text-ink-900 border-gold-700";
-  if (rank === 2) return "bg-warm-200 text-ink-900 border-ink-400";
-  if (rank === 3) return "bg-vermilion-200 text-vermilion-900 border-vermilion-500";
-  return "bg-white/90 text-ink-700 border-warm-200";
+  if (rank === 1) return "bg-gradient-to-br from-[#f6d57a] to-[#c98b1e] text-[#140e05] border-[#ffe7a8]";
+  if (rank === 2) return "bg-gradient-to-br from-[#e2e5ea] to-[#9aa1ad] text-[#121418] border-white/70";
+  if (rank === 3) return "bg-gradient-to-br from-[#e8986b] to-[#a9502c] text-white border-[#ffc29e]/60";
+  return "bg-black/75 text-white/90 border-white/20 backdrop-blur-md";
 }
 
 export default async function TrendingRanking({ locale, limit = 12 }: Props) {
@@ -48,7 +48,7 @@ export default async function TrendingRanking({ locale, limit = 12 }: Props) {
         </div>
         <Link
           href={`/${locale}/restaurants`}
-          className="text-sm font-medium hover:underline text-vermilion-700 shrink-0"
+          className="text-sm font-medium text-gold-300 hover:underline shrink-0"
         >
           {t("see_all")}
         </Link>

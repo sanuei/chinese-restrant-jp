@@ -69,9 +69,11 @@ export default async function LocaleLayout({ children, params }: Props) {
 
   return (
     <NextIntlClientProvider messages={messages}>
-      <Navbar locale={locale} user={user} />
-      <main className="min-h-screen">{children}</main>
-      <Footer locale={locale} />
+      <div className="obsidian-site min-h-screen">
+        <Navbar locale={locale} user={user} />
+        <main className="min-h-screen">{children}</main>
+        <Footer locale={locale} />
+      </div>
     </NextIntlClientProvider>
   );
 }

@@ -55,12 +55,12 @@ export default function FavoriteButton({ restaurantId, initialFavorited, isLogge
       title={label}
       className={
         className ||
-        "inline-flex h-9 w-9 items-center justify-center rounded-full bg-white/90 shadow-sm backdrop-blur-sm transition-transform hover:scale-105"
+        "inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/15 bg-black/65 shadow-md backdrop-blur-md transition-transform hover:scale-105 hover:border-gold-300/50"
       }
     >
       <Heart
         size={18}
-        className={favorited ? "fill-vermilion-700 text-vermilion-700" : "text-ink-700"}
+        className={favorited ? "fill-vermilion-500 text-vermilion-500" : "text-white/85"}
       />
     </button>
   );

@@ -140,13 +140,13 @@ export default async function TopRestaurants({
           {sortMode === "top" && effectiveSeed !== null && (
             <Link
               href={buildTopHref(locale, 1, effectiveSeed + 1)}
-              className="inline-flex items-center gap-1.5 rounded-full border border-warm-200 bg-white px-3 py-1.5 text-xs font-medium text-ink-700 transition-colors hover:border-vermilion-300 hover:text-vermilion-700"
+              className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/5 px-3.5 py-1.5 text-xs font-medium text-white/85 transition-colors hover:border-gold-300/55 hover:bg-white/10 hover:text-gold-300"
             >
               <RefreshCw size={13} />
               {th("shuffle_batch")}
             </Link>
           )}
-          <Link href={`/${locale}/restaurants`} className="text-sm font-medium hover:underline text-vermilion-700">
+          <Link href={`/${locale}/restaurants`} className="text-sm font-medium text-gold-300 hover:underline">
             {th("see_all")}
           </Link>
         </div>

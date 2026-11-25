@@ -29,9 +29,9 @@ export function StationCardGrid({ locale, counts }: Props) {
           <Link
             key={station.key}
             href={`/${locale}/restaurants?${query.toString()}`}
-            className="group flex items-center gap-2 rounded-lg border border-warm-200 bg-white px-2.5 py-2 transition-all hover:-translate-y-0.5 hover:border-vermilion-300 hover:shadow-md"
+            className="group flex items-center gap-2 rounded-lg border border-white/10 bg-[#121117] px-2.5 py-2 transition-all hover:-translate-y-0.5 hover:border-gold-300/45 hover:bg-[#191720] hover:shadow-[0_10px_24px_rgba(0,0,0,0.5)]"
           >
-            <TrainFront size={18} className="shrink-0 text-vermilion-700 transition-transform group-hover:scale-110" />
+            <TrainFront size={18} className="shrink-0 text-gold-300 transition-transform group-hover:scale-110" />
             <div className="min-w-0">
               <div className="font-serif text-sm font-bold leading-tight text-ink-900 truncate">{label}</div>
               <div className="text-[11px] leading-tight text-ink-400">
