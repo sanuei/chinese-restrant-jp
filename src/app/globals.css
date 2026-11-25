@@ -239,7 +239,7 @@ body {
 }
 
 /* ================================================
-   Hero 区域
+   Hero 区域（暗黑 3D 弧形画廊风）
    ================================================ */
 
 .hero-pattern {
@@ -249,173 +249,321 @@ body {
     url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23c9a227' fill-opacity='0.04'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
 }
 
-.hero-luxury {
+.hero-showcase {
+  position: relative;
   isolation: isolate;
-  background:
-    linear-gradient(90deg, oklch(0.14 0.03 30) 0%, oklch(0.17 0.04 28) 42%, oklch(0.24 0.08 25 / 0.70) 100%);
+  overflow: hidden;
+  background-color: #060608;
+  color: #f8f5ef;
 }
 
-.hero-luxury-image {
+/* 中心暖金 × 朱红氛围光晕（呼应美食暖调，烘托中央 3D 卡片） */
+.hero-showcase-glow {
   position: absolute;
-  inset: 0;
-  z-index: -3;
-  background-image:
-    linear-gradient(180deg, oklch(0.10 0.02 30 / 0.42) 0%, oklch(0.10 0.02 30 / 0.58) 100%),
-    url("https://images.unsplash.com/photo-1621916805571-2e804f82170c?q=80&w=2200&auto=format&fit=crop");
-  background-position: center;
-  background-size: cover;
-  transform: scale(1.02);
-}
-
-.hero-luxury-grain {
-  position: absolute;
-  inset: 0;
+  left: 50%;
+  top: 56%;
+  width: min(920px, 115vw);
+  height: 460px;
+  transform: translate(-50%, -50%);
   z-index: -2;
-  opacity: 0.24;
-  background-image:
-    linear-gradient(120deg, transparent 0 42%, oklch(0.78 0.15 80 / 0.20) 42.2% 42.45%, transparent 42.7%),
-    url("data:image/svg+xml,%3Csvg width='140' height='140' viewBox='0 0 140 140' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' stroke='%23e5c36a' stroke-opacity='0.18' stroke-width='1'%3E%3Cpath d='M0 70h140M70 0v140M20 20h100v100H20zM40 40h60v60H40z'/%3E%3C/g%3E%3C/svg%3E");
-  background-size: auto, 140px 140px;
-}
-
-.hero-luxury-seal {
-  position: absolute;
-  right: max(28px, calc((100vw - 1180px) / 2));
-  top: 76px;
-  z-index: -1;
-  color: oklch(0.90 0.04 75 / 0.09);
-  font-family: var(--font-serif);
-  font-size: 14rem;
-  font-weight: 900;
-  line-height: 1;
   pointer-events: none;
-  user-select: none;
+  background:
+    radial-gradient(ellipse 46% 52% at 50% 50%, rgba(235, 168, 52, 0.24) 0%, rgba(196, 62, 34, 0.16) 40%, transparent 74%),
+    radial-gradient(circle at 50% 42%, rgba(255, 224, 150, 0.14) 0%, transparent 45%);
+  filter: blur(18px);
 }
 
-.hero-kicker {
+/* 极细腻的星尘微粒噪点，增加暗黑画面质感 */
+.hero-showcase-dots {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  opacity: 0.35;
+  background-image:
+    radial-gradient(rgba(242, 201, 117, 0.45) 1px, transparent 1px),
+    radial-gradient(rgba(255, 255, 255, 0.2) 1px, transparent 1px);
+  background-size: 54px 54px, 31px 31px;
+  background-position: 0 0, 17px 23px;
+  mask-image: radial-gradient(ellipse 60% 52% at 50% 56%, black 15%, transparent 76%);
+}
+
+/* 顶部发光暗黑玻璃胶囊 CTA 按钮 */
+.hero-cta-pill {
+  position: relative;
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  padding: 7px 11px;
-  border: 1px solid oklch(0.78 0.15 80 / 0.40);
-  background: oklch(0.12 0.03 30 / 0.58);
-  color: var(--color-gold-300);
-  font-size: 0.72rem;
-  font-weight: 700;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
+  justify-content: center;
+  gap: 10px;
+  padding: 12px 28px;
+  border-radius: 9999px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: linear-gradient(180deg, rgba(28, 25, 22, 0.92) 0%, rgba(12, 11, 12, 0.96) 100%);
+  color: #f9f6f0;
+  font-size: 0.92rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  box-shadow:
+    0 0 0 1px rgba(235, 168, 52, 0.14),
+    0 12px 34px -8px rgba(235, 168, 52, 0.36),
+    inset 0 1px 0 rgba(255, 232, 175, 0.35);
+  transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
-.hero-cuisine-grid {
-  max-width: 760px;
+.hero-cta-pill:hover {
+  transform: translateY(-2px);
+  border-color: rgba(242, 201, 117, 0.58);
+  box-shadow:
+    0 0 0 1px rgba(242, 201, 117, 0.3),
+    0 16px 42px -6px rgba(235, 168, 52, 0.52),
+    inset 0 1px 0 rgba(255, 238, 195, 0.55);
 }
 
-.hero-cuisine-chip {
+/* 3D 弧形内凹卡片墙舞台 */
+.hero-arc-stage {
+  position: relative;
+  width: 100%;
+  margin: 0 auto;
+  padding: 18px 0 26px;
+  perspective: 1150px;
+  perspective-origin: 50% 50%;
+}
+
+.hero-arc-track {
+  position: relative;
+  left: 50%;
+  transform: translateX(-50%);
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: 14px;
+  transform-style: preserve-3d;
+  width: min(1480px, 112vw);
+}
+
+.hero-arc-card {
+  position: relative;
+  display: block;
+  flex: 1 1 0;
   min-width: 0;
+  border-radius: 16px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: #141214;
+  box-shadow: 0 24px 50px rgba(0, 0, 0, 0.72);
+  transform-style: preserve-3d;
+  transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1), border-color 0.25s ease, box-shadow 0.25s ease;
+}
+
+.hero-arc-card img {
+  width: 100%;
   height: 100%;
+  object-fit: cover;
+  display: block;
+  transition: transform 0.5s ease, filter 0.35s ease;
+}
+
+.hero-arc-card:hover {
+  border-color: rgba(242, 201, 117, 0.65);
+  box-shadow: 0 28px 60px rgba(0, 0, 0, 0.85), 0 0 28px rgba(235, 168, 52, 0.22);
+  z-index: 20 !important;
+}
+
+.hero-arc-card:hover img {
+  transform: scale(1.06);
+  filter: none !important;
+}
+
+/* 7 张卡片对称弧形透视（中心内凹、两侧外扩增高前倾） */
+.hero-arc-pos-0 {
+  height: 368px;
+  transform: translateX(-8px) translateZ(72px) rotateY(30deg);
+  z-index: 7;
+}
+.hero-arc-pos-0 img {
+  filter: grayscale(0.78) contrast(1.08) brightness(0.82);
+}
+
+.hero-arc-pos-1 {
+  height: 306px;
+  transform: translateZ(26px) rotateY(21deg);
+  z-index: 6;
+}
+.hero-arc-pos-1 img {
+  filter: grayscale(0.58) contrast(1.05) brightness(0.88);
+}
+
+.hero-arc-pos-2 {
+  height: 262px;
+  transform: translateZ(-8px) rotateY(11deg);
+  z-index: 5;
+}
+.hero-arc-pos-2 img {
+  filter: saturate(0.72) brightness(0.92);
+}
+
+.hero-arc-pos-3 {
+  height: 248px;
+  transform: translateZ(-22px) rotateY(0deg);
+  border-color: rgba(242, 201, 117, 0.45);
+  box-shadow:
+    0 0 42px rgba(235, 168, 52, 0.28),
+    0 24px 50px rgba(0, 0, 0, 0.78);
+  z-index: 8;
+}
+
+.hero-arc-pos-4 {
+  height: 262px;
+  transform: translateZ(-8px) rotateY(-11deg);
+  z-index: 5;
+}
+
+.hero-arc-pos-5 {
+  height: 306px;
+  transform: translateZ(26px) rotateY(-21deg);
+  z-index: 6;
+}
+
+.hero-arc-pos-6 {
+  height: 368px;
+  transform: translateX(8px) translateZ(72px) rotateY(-30deg);
+  z-index: 7;
+}
+
+/* 中央垂直「AI 鉴味光束」：贯穿中心卡片，划分左半冷调滤镜与右半饱满真味 */
+.hero-center-split-mask {
+  position: absolute;
+  inset: 0 50% 0 0;
+  backdrop-filter: grayscale(0.68) contrast(1.06);
+  pointer-events: none;
+  z-index: 2;
+  transition: opacity 0.35s ease;
+}
+
+.hero-arc-pos-3:hover .hero-center-split-mask {
+  opacity: 0;
+}
+
+.hero-center-beam {
+  position: absolute;
+  top: -16px;
+  bottom: -16px;
+  left: 50%;
+  width: 2px;
+  transform: translateX(-50%);
+  pointer-events: none;
+  z-index: 4;
+  background: linear-gradient(
+    180deg,
+    transparent 0%,
+    rgba(255, 222, 130, 0.95) 22%,
+    #fff4cc 50%,
+    rgba(235, 140, 48, 0.95) 78%,
+    transparent 100%
+  );
+  box-shadow:
+    0 0 14px 2px rgba(242, 185, 65, 0.9),
+    0 0 36px 8px rgba(210, 72, 34, 0.45);
+}
+
+/* 卡片底部极简信息浮层 */
+.hero-arc-caption {
+  position: absolute;
+  inset: auto 0 0 0;
+  padding: 28px 12px 11px;
+  background: linear-gradient(180deg, transparent 0%, rgba(6, 6, 8, 0.78) 55%, rgba(6, 6, 8, 0.94) 100%);
+  z-index: 3;
+}
+
+/* 菜系细胶囊条（暗黑极简版） */
+.hero-cuisine-pill {
+  display: inline-flex;
+  align-items: center;
   gap: 6px;
-  padding: 14px 8px;
-  border: 1px solid oklch(0.78 0.15 80 / 0.28);
-  border-radius: var(--radius-md);
-  background: linear-gradient(135deg, oklch(0.18 0.04 30 / 0.78), oklch(0.13 0.03 30 / 0.74));
-  color: oklch(0.96 0.02 85 / 0.90);
-  text-align: center;
-  backdrop-filter: blur(14px);
-  transition: transform 0.16s ease, border-color 0.16s ease, background 0.16s ease;
+  padding: 6px 12px;
+  border-radius: 9999px;
+  border: 1px solid rgba(255, 255, 255, 0.11);
+  background: rgba(255, 255, 255, 0.04);
+  color: rgba(248, 245, 239, 0.86);
+  font-size: 0.76rem;
+  font-weight: 500;
+  transition: border-color 0.18s ease, background 0.18s ease, color 0.18s ease, transform 0.18s ease;
 }
 
-.hero-cuisine-chip:hover {
-  transform: translateY(-2px);
-  border-color: oklch(0.78 0.15 80 / 0.65);
-  background: linear-gradient(135deg, oklch(0.22 0.05 30 / 0.86), oklch(0.16 0.04 30 / 0.82));
+.hero-cuisine-pill:hover {
+  border-color: rgba(242, 201, 117, 0.55);
+  background: rgba(235, 168, 52, 0.12);
+  color: #ffffff;
+  transform: translateY(-1px);
 }
 
-.hero-cuisine-chip svg {
+.hero-cuisine-pill svg {
   color: var(--color-gold-300);
 }
 
-.hero-cuisine-chip-label {
-  font-size: 0.78rem;
-  font-weight: 700;
-  line-height: 1.25;
-  /* 日文菜系名明显更长（江蘇・上海料理 / 雲南・貴州料理 / 総合・その他），
-     原来的 nowrap 会直接把文字顶出卡片。改成允许折行 */
-  white-space: normal;
-  overflow-wrap: anywhere;
-  text-wrap: balance;
-}
-
-/* 9 列并排时每格很窄，日文再缩一档才不至于挤成三行 */
-@media (min-width: 1024px) {
-  .hero-cuisine-chip-label {
-    font-size: 0.72rem;
+/* 平板与移动端响应式降级：保持整洁不挤压 */
+@media (max-width: 1024px) {
+  .hero-arc-track {
+    width: 108vw;
+    gap: 10px;
+  }
+  .hero-arc-pos-0,
+  .hero-arc-pos-6 {
+    display: none;
+  }
+  .hero-arc-pos-1,
+  .hero-arc-pos-5 {
+    height: 276px;
+  }
+  .hero-arc-pos-2,
+  .hero-arc-pos-4 {
+    height: 238px;
+  }
+  .hero-arc-pos-3 {
+    height: 224px;
   }
 }
 
-.hero-cuisine-chip-count {
-  font-size: 0.68rem;
-  color: oklch(0.96 0.02 85 / 0.56);
-}
-
-.hero-cert-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  min-height: 32px;
-  border: 1px solid oklch(0.90 0.04 75 / 0.24);
-  background: oklch(0.12 0.03 30 / 0.58);
-  color: oklch(0.96 0.02 85 / 0.86);
-  font-family: var(--font-serif);
-  font-size: 0.76rem;
-  font-weight: 800;
-  padding: 5px 11px;
-}
-
-.hero-cert-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 999px;
-  background: var(--color-vermilion-500);
-  box-shadow: 0 0 0 3px oklch(0.60 0.18 25 / 0.16);
-}
-
-.hero-cert-gold .hero-cert-dot {
-  background: var(--color-gold-500);
-  box-shadow: 0 0 0 3px oklch(0.78 0.15 80 / 0.16);
-}
-
-.hero-cert-blue .hero-cert-dot {
-  background: oklch(0.68 0.12 230);
-  box-shadow: 0 0 0 3px oklch(0.68 0.12 230 / 0.16);
-}
-
-.hero-bottom-hint {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  height: 44px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-top: 1px solid oklch(0.78 0.15 80 / 0.22);
-  background: oklch(0.97 0.01 85 / 0.92);
-  color: var(--color-ink-700);
-  font-size: 0.78rem;
-  font-weight: 800;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-}
-
-@media (max-width: 720px) {
-  .hero-luxury-seal {
-    right: -20px;
-    top: 54px;
-    font-size: 8rem;
+@media (max-width: 640px) {
+  .hero-arc-stage {
+    perspective: none;
+    padding: 12px 0 18px;
+  }
+  .hero-arc-track {
+    left: 0;
+    transform: none;
+    width: 100%;
+    justify-content: flex-start;
+    overflow-x: auto;
+    padding: 4px 16px 8px;
+    gap: 12px;
+    scroll-snap-type: x mandatory;
+    scrollbar-width: none;
+  }
+  .hero-arc-track::-webkit-scrollbar {
+    display: none;
+  }
+  .hero-arc-card,
+  .hero-arc-pos-0,
+  .hero-arc-pos-1,
+  .hero-arc-pos-2,
+  .hero-arc-pos-3,
+  .hero-arc-pos-4,
+  .hero-arc-pos-5,
+  .hero-arc-pos-6 {
+    display: block;
+    flex: 0 0 64vw;
+    height: 230px;
+    transform: none !important;
+    scroll-snap-align: center;
+  }
+  .hero-arc-pos-0 img,
+  .hero-arc-pos-1 img,
+  .hero-arc-pos-2 img {
+    filter: none;
+  }
+  .hero-center-split-mask {
+    display: none;
   }
 }
 

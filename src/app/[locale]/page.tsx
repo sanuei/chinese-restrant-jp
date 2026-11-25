@@ -1,6 +1,6 @@
 import { getTranslations } from "next-intl/server";
 import type { Metadata } from "next";
-import HeroSection from "@/components/HeroSection";
+import HeroSection, { type HeroShowcaseRestaurant } from "@/components/HeroSection";
 import TopRestaurants from "@/components/TopRestaurants";
 import TrendingRanking from "@/components/TrendingRanking";
 import HomeDiscovery from "@/components/HomeDiscovery";
@@ -8,6 +8,7 @@ import AdSlot from "@/components/AdSlot";
 import JsonLd from "@/components/JsonLd";
 import { buildOrganizationJsonLd } from "@/lib/json-ld";
 import { getDb } from "@/lib/cloudflare";
+import { getHourlyRotationSeed, rotateRestaurantsByTier } from "@/lib/restaurant-rotation";
 import { matchesStationArea, stationAreas, type StationAreaKey } from "@/lib/station-areas";
 
 export const dynamic = "force-dynamic";
@@ -119,22 +120,48 @@ async function getStationAreaCounts(): Promise<Record<StationAreaKey, number>> {
   return counts;
 }
 
+async function getHeroShowcaseRestaurants(): Promise<HeroShowcaseRestaurant[]> {
+  try {
+    const db = await getDb();
+    // 精选有实拍照片的高分正宗餐厅，按小时轮换并按菜系打散取 7 家展示在 3D 弧形画廊中
+    const result = await db
+      .prepare(
+        `SELECT id, name_zh, name_ja, name_original, cuisine_type, trusted_rating, raw_rating, photos
+         FROM restaurants
+         WHERE is_active = 1 AND authenticity = 'authentic'
+           AND photos IS NOT NULL AND photos NOT IN ('', '[]')
+         ORDER BY trusted_rating DESC, raw_review_count DESC
+         LIMIT 36`
+      )
+      .all<HeroShowcaseRestaurant>();
+
+    const pool = result.results ?? [];
+    return rotateRestaurantsByTier(pool, getHourlyRotationSeed() + 777, {
+      tierSize: 36,
+      diversifyCuisine: true,
+    }).slice(0, 7);
+  } catch {
+    return [];
+  }
+}
+
 export default async function HomePage({ params, searchParams }: Props) {
   const { locale } = await params;
   const query = await searchParams;
   const topPage = parsePage(query.topPage);
   const topSeed = parseSeed(query.topSeed);
   const t = await getTranslations({ locale, namespace: "home" });
-  const [cuisineCounts, dishTypeCounts, stationAreaCounts] = await Promise.all([
+  const [cuisineCounts, dishTypeCounts, stationAreaCounts, heroShowcase] = await Promise.all([
     getCuisineCounts(),
     getDishTypeCounts(),
     getStationAreaCounts(),
+    getHeroShowcaseRestaurants(),
   ]);
 
   return (
     <>
       <JsonLd data={buildOrganizationJsonLd(locale)} />
-      <HeroSection locale={locale} counts={cuisineCounts} />
+      <HeroSection locale={locale} counts={cuisineCounts} showcaseRestaurants={heroShowcase} />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <HomeDiscovery
           locale={locale}
